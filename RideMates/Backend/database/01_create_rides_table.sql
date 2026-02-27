@@ -1,0 +1,38 @@
+CREATE TABLE rides (
+    id                  INT AUTO_INCREMENT PRIMARY KEY,
+    driver_id           INT NOT NULL,
+    origin_city         VARCHAR(100) NOT NULL,
+    origin_lat          DECIMAL(10, 7) NOT NULL,
+    origin_lng          DECIMAL(10, 7) NOT NULL,
+    destination_city    VARCHAR(100) NOT NULL,
+    dest_lat            DECIMAL(10, 7) NOT NULL,
+    dest_lng            DECIMAL(10, 7) NOT NULL,
+    distance_km         DECIMAL(6, 2) NOT NULL,
+    departure_time      DATETIME NOT NULL,
+    available_seats     TINYINT NOT NULL CHECK (available_seats >= 0),
+    vehicle_type        ENUM('car', 'bike', 'auto') DEFAULT 'car',
+    vehicle_mileage     DECIMAL(5, 2) DEFAULT 15.00,
+    fuel_type           ENUM('petrol', 'diesel', 'cng', 'electric') DEFAULT 'petrol',
+    base_price          DECIMAL(8, 2) NOT NULL,
+    driver_set_price    DECIMAL(8, 2) NOT NULL,
+    capped_price        DECIMAL(8, 2) NOT NULL,
+    is_emergency_route  BOOLEAN DEFAULT FALSE,
+    status              ENUM('active', 'completed', 'cancelled') DEFAULT 'active',
+    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (driver_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_status (status),
+    INDEX idx_departure (departure_time)
+);
+
+CREATE TABLE bookings (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    ride_id         INT NOT NULL,
+    passenger_id    INT NOT NULL,
+    seats_booked    TINYINT DEFAULT 1,
+    price_paid      DECIMAL(8, 2) NOT NULL,
+    status          ENUM('confirmed', 'cancelled', 'completed') DEFAULT 'confirmed',
+    booked_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (ride_id) REFERENCES rides(id) ON DELETE CASCADE,
+    FOREIGN KEY (passenger_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_booking (ride_id, passenger_id)
+);
