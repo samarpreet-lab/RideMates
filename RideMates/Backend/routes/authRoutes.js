@@ -11,7 +11,7 @@
 const express = require('express');
 const router = express.Router();
 const { registerUser, getProfile, updateProfile } = require('../controllers/authController');
-const verifyToken = require('../middleware/auth');
+const { verifyToken } = require('../middleware/auth');
 
 // Registration needs a valid Firebase token so we know WHO is registering
 router.post('/register', verifyToken, registerUser);
