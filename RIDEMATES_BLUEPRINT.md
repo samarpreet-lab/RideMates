@@ -101,15 +101,29 @@ per_seat_price = min(driver_set_price, max_cap) / total_passengers
 
 ---
 
-### 2.3 Dynamic Node Routing
+### 2.3 Hybrid Geocoding & Route Visualization
 
 | Attribute       | Detail                                                                          |
 | --------------- | ------------------------------------------------------------------------------- |
-| **How**         | User types a city name → Mapbox Geocoding API converts to GPS coordinates → Polyline drawn on map |
-| **Why**         | Visual, map-based UX without the heavy cost of real-time live-tracking          |
-| **Flow**        | `City Name → Lat/Lng → Mapbox Directions API → Decoded Polyline → MapView`     |
+| **How**         | User types a city name → **Local JSON dataset** resolves GPS coordinates for regional hubs (Mukerian, Jalandhar, Phagwara, etc.) → Mapbox Geocoding API is used as a **fallback** only for cities not found locally → Mapbox Directions API draws polyline on map |
+| **Why**         | Ensures the app remains free and functional even when the Mapbox Geocoding API quota is exhausted; regional hubs always resolve offline |
+| **Flow**        | `City Name → Local JSON Lookup → (miss?) Mapbox Fallback → Lat/Lng → Mapbox Directions API → Decoded Polyline → MapView` |
 
-**Geocoding Request:**
+**Local JSON Dataset (Offline Regional Hubs):**
+
+```json
+// data/cityCoordinates.json
+{
+  "Mukerian":   { "lat": 31.9530, "lng": 75.6170 },
+  "Jalandhar":  { "lat": 31.3260, "lng": 75.5762 },
+  "Phagwara":   { "lat": 31.2240, "lng": 75.7708 },
+  "Hoshiarpur": { "lat": 31.5143, "lng": 75.9115 },
+  "Ludhiana":   { "lat": 30.9010, "lng": 75.8573 },
+  "Amritsar":   { "lat": 31.6340, "lng": 74.8723 }
+}
+```
+
+**Geocoding Request (Fallback Only):**
 
 ```
 GET https://api.mapbox.com/geocoding/v5/mapbox.places/{city_name}.json?access_token={TOKEN}
@@ -135,15 +149,64 @@ GET https://api.mapbox.com/directions/v5/mapbox/driving/{origin_lng},{origin_lat
 
 ---
 
+### 2.5 Trust System & Report-Based Accountability
+
+| Attribute       | Detail                                                                          |
+| --------------- | ------------------------------------------------------------------------------- |
+| **How**         | Every user starts with `trust_score = 100` and `current_streak = 0`. Penalties reduce the score; clean rides build the streak. |
+| **Shield**      | A **single** conduct report triggers only a warning — **no point deduction**. This protects against false accusations. |
+| **Pattern Trigger** | When **2+ reports from different reporters across different rides** occur within 30 days, the system applies **−10 Trust Points** per qualifying report and resets `current_streak` to 0. |
+| **Escalation**  | 3+ pattern-matched reports in 30 days → additional **−25 points** escalated penalty. |
+| **No-Show**     | Reports with reason `no_show` bypass the shield and immediately deduct **−5 Trust Points** (objective, verifiable event). |
+| **Clean Ride Streak** | After a ride is marked completed, a **12-hour grace period** begins. If no reports are filed during this window, `current_streak` increments by 1 for the driver and all passengers. |
+| **Display**     | Trust score and streak shown on Profile screen. Scores below 50 show a warning badge. |
+
+---
+
+### 2.6 Instant Booking & Women-Only Rides
+
+| Attribute       | Detail                                                                          |
+| --------------- | ------------------------------------------------------------------------------- |
+| **Instant Booking** | Drivers can enable `instant_booking = true`. Passengers auto-book without driver approval. |
+| **Trust Contract** | Before publishing an Instant Booking ride, the driver MUST check an acknowledgment checkbox (`instant_booking_ack`), binding them to the Trust Score penalty clause for last-minute cancellations. The ride cannot be published without this acknowledgment. |
+| **Women-Only**  | Rides marked `is_women_only = true` restrict Instant Booking to passengers whose profile `gender = 'female'`. |
+| **Schema**      | `instant_booking BOOLEAN DEFAULT FALSE`, `instant_booking_ack BOOLEAN DEFAULT FALSE`, `is_women_only BOOLEAN DEFAULT FALSE` in the `rides` table; `gender ENUM('male','female','other') DEFAULT 'other'` in the `users` table. |
+
+---
+
+### 2.7 Ride Lifecycle & Completion
+
+| Attribute       | Detail                                                                          |
+| --------------- | ------------------------------------------------------------------------------- |
+| **Completion Prompt** | 2 hours after `departure_time`, the driver sees an in-app prompt on next app open: "Is your trip to {destination_city} finished?" with a "Complete Ride" button. |
+| **Mark Complete** | Driver taps "Complete Ride" → `rides.status = 'completed'`, `completed_at` recorded. All confirmed bookings transition to `status = 'completed'`. |
+| **Grace Period** | After completion, a 12-hour window begins for all participants to file reports. |
+| **Clean Ride Award** | If no reports are filed within the 12-hour grace period, `current_streak` increments by 1 for the driver and all confirmed passengers. |
+| **Auto-Completion** | If the driver doesn't tap "Complete Ride" within 24 hours after departure, the system auto-completes the ride. |
+
+---
+
+### 2.8 Post-Booking Native Handoff
+
+| Attribute       | Detail                                                                          |
+| --------------- | ------------------------------------------------------------------------------- |
+| **What**        | After a successful booking, the app shows WhatsApp and Call buttons linking to the driver's phone number. |
+| **Why**         | In-app chat is out of scope. Native Handoff lets passengers coordinate pickup logistics via existing apps. |
+| **WhatsApp**    | Opens `https://wa.me/{driver_phone}?text=...` with a pre-filled ride summary message. |
+| **Call**        | Opens `tel:{driver_phone}` to initiate a native phone call. |
+| **Fallback**    | If the driver has no phone number on file, both buttons are hidden with a message: "Driver has not shared contact details yet." |
+
+---
+
 ## 3. Technology Stack
 
 | Layer              | Technology               | Purpose in RideMates                                                        |
 | ------------------ | ------------------------ | --------------------------------------------------------------------------- |
 | **Frontend**       | React Native (Expo)      | Cross-platform UI (Android/iOS). Map rendering and user inputs.             |
 | **Backend API**    | Node.js & Express.js     | Server-side logic: price cap calculation, seat availability, ride matching. |
-| **Database**       | MySQL (via Aiven)        | Stores relational data: Users, Rides, Bookings.                            |
+| **Database**       | MySQL (via Aiven)        | Stores relational data: Users, Rides, Bookings, Reports.               |
 | **Authentication** | Firebase Auth            | Sends Email OTP and verifies university domain.                            |
-| **Mapping**        | Mapbox API               | Text → Lat/Lng conversion, polyline route drawing.                         |
+| **Mapping**        | Local JSON + Mapbox API  | Local JSON for regional hub geocoding; Mapbox fallback geocoding + Directions API for polylines. |
 | **Location**       | expo-location            | Gets user's current GPS coordinates on device.                             |
 | **HTTP Client**    | Axios                    | Frontend-to-backend API communication.                                     |
 | **Navigation**     | React Navigation         | Screen-to-screen routing within the mobile app.                            |
@@ -168,8 +231,17 @@ GET https://api.mapbox.com/directions/v5/mapbox/driving/{origin_lng},{origin_lat
 ┌──────────┐       ┌──────────┐       ┌──────────────┐
 │  users   │──1:N──│  rides   │──1:N──│  bookings    │
 └──────────┘       └──────────┘       └──────────────┘
-     │                                       │
-     └──────────────────1:N──────────────────┘
+     │                  │                    │
+     └──────────────────┼──────1:N───────────┘
+                        │
+                   1:N  │
+                        │
+                  ┌─────┴──────┐
+                  │  reports   │
+                  └────────────┘
+                  ┌────────────┐
+                  │ fuel_rates │
+                  └────────────┘
 ```
 
 ### 4.2 SQL CREATE TABLE Statements
@@ -188,6 +260,9 @@ CREATE TABLE users (
     university      VARCHAR(100) DEFAULT 'LPU',
     role            ENUM('student', 'faculty') DEFAULT 'student',
     profile_photo   VARCHAR(255),
+    gender          ENUM('male', 'female', 'other') DEFAULT 'other',
+    trust_score     INT NOT NULL DEFAULT 100,
+    current_streak  INT NOT NULL DEFAULT 0,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
@@ -218,7 +293,11 @@ CREATE TABLE rides (
     driver_set_price    DECIMAL(8, 2) NOT NULL,
     capped_price        DECIMAL(8, 2) NOT NULL,
     is_emergency_route  BOOLEAN DEFAULT FALSE,
+    is_women_only       BOOLEAN DEFAULT FALSE,
+    instant_booking     BOOLEAN DEFAULT FALSE,
+    instant_booking_ack BOOLEAN DEFAULT FALSE,
     status              ENUM('active', 'completed', 'cancelled') DEFAULT 'active',
+    completed_at        TIMESTAMP NULL,
     created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     FOREIGN KEY (driver_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -233,13 +312,15 @@ CREATE TABLE rides (
 -- Every seat reservation by a passenger
 -- =============================================
 CREATE TABLE bookings (
-    id              INT AUTO_INCREMENT PRIMARY KEY,
-    ride_id         INT NOT NULL,
-    passenger_id    INT NOT NULL,
-    seats_booked    TINYINT DEFAULT 1,
-    price_paid      DECIMAL(8, 2) NOT NULL,
-    status          ENUM('confirmed', 'cancelled', 'completed') DEFAULT 'confirmed',
-    booked_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    id                  INT AUTO_INCREMENT PRIMARY KEY,
+    ride_id             INT NOT NULL,
+    passenger_id        INT NOT NULL,
+    seats_booked        TINYINT DEFAULT 1,
+    price_paid          DECIMAL(8, 2) NOT NULL,
+    status              ENUM('confirmed', 'cancelled', 'completed') DEFAULT 'confirmed',
+    is_reported         BOOLEAN DEFAULT FALSE,
+    cancellation_penalty INT DEFAULT 0,
+    booked_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     FOREIGN KEY (ride_id) REFERENCES rides(id) ON DELETE CASCADE,
     FOREIGN KEY (passenger_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -249,7 +330,32 @@ CREATE TABLE bookings (
 );
 ```
 
-### 4.3 Fuel Rate Reference Table
+### 4.3 Reports Table
+
+```sql
+-- =============================================
+-- TABLE 4: reports
+-- Incident reports filed by users against other users
+-- =============================================
+CREATE TABLE reports (
+    id                INT AUTO_INCREMENT PRIMARY KEY,
+    ride_id           INT NOT NULL,
+    reporter_id       INT NOT NULL,
+    reported_user_id  INT NOT NULL,
+    reason            ENUM('no_show', 'bad_conduct', 'unsafe_driving', 'harassment') NOT NULL,
+    description       TEXT,
+    penalty_applied   INT NOT NULL DEFAULT 10,
+    created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (ride_id) REFERENCES rides(id) ON DELETE CASCADE,
+    FOREIGN KEY (reporter_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (reported_user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_report (ride_id, reporter_id),
+    INDEX idx_reported_user (reported_user_id)
+);
+```
+
+### 4.4 Fuel Rate Reference Table
 
 ```sql
 -- =============================================
@@ -338,6 +444,7 @@ Production:   https://your-domain.com/api
 | GET    | `/api/rides/search`    | Search rides by origin/destination  | Yes           |
 | GET    | `/api/rides/:id`       | Get single ride details             | Yes           |
 | PUT    | `/api/rides/:id`       | Update ride (driver only)           | Yes           |
+| PUT    | `/api/rides/:id/complete` | Mark ride as completed (driver)  | Yes           |
 | DELETE | `/api/rides/:id`       | Cancel ride (driver only)           | Yes           |
 
 #### POST `/api/rides/create`
@@ -369,7 +476,11 @@ Production:   https://your-domain.com/api
   "vehicle_type": "car",
   "vehicle_mileage": 15,
   "fuel_type": "petrol",
-  "driver_set_price": 180
+  "driver_set_price": 180,
+  "is_emergency_route": false,
+  "is_women_only": false,
+  "instant_booking": true,
+  "instant_booking_ack": true
 }
 ```
 
@@ -410,7 +521,77 @@ Production:   https://your-domain.com/api
 | ------ | ------------------------- | -------------------------------- | ------------- |
 | POST   | `/api/bookings/new`       | Book a seat on a ride            | Yes           |
 | GET    | `/api/bookings/my`        | Get current user's bookings      | Yes           |
-| PUT    | `/api/bookings/:id/cancel`| Cancel a booking                 | Yes           |
+| PUT    | `/api/bookings/:id/cancel`| Cancel a booking (tiered penalty)| Yes           |
+
+---
+
+### 5.4 Report Endpoints
+
+| Method | Endpoint                  | Description                      | Auth Required |
+| ------ | ------------------------- | -------------------------------- | ------------- |
+| POST   | `/api/reports/new`        | File a report against a user     | Yes           |
+| GET    | `/api/reports/my`         | Get reports filed by the user    | Yes           |
+
+#### POST `/api/reports/new`
+
+**Request Body:**
+
+```json
+{
+  "ride_id": 42,
+  "reported_user_id": 5,
+  "reason": "bad_conduct",
+  "description": "Driver was rude and drove recklessly"
+}
+```
+
+**Success Response (201) — Warning Only (Shield):**
+
+```json
+{
+  "success": true,
+  "message": "Report submitted. A system warning has been issued.",
+  "data": {
+    "action": "WARNING_ONLY",
+    "points_deducted": 0
+  }
+}
+```
+
+**Success Response (201) — Pattern Penalty:**
+
+```json
+{
+  "success": true,
+  "message": "Report submitted. Pattern detected — trust score adjusted.",
+  "data": {
+    "action": "PATTERN_PENALTY",
+    "points_deducted": -10
+  }
+}
+```
+
+**Success Response (201) — No-Show Immediate:**
+
+```json
+{
+  "success": true,
+  "message": "Report submitted. No-show penalty applied.",
+  "data": {
+    "action": "IMMEDIATE_PENALTY",
+    "points_deducted": -5
+  }
+}
+```
+
+**Error Response (409):**
+
+```json
+{
+  "success": false,
+  "message": "You have already reported this ride"
+}
+```
 
 #### POST `/api/bookings/new`
 
@@ -596,13 +777,15 @@ Backend/
 │
 ├── controllers/              # THE LOGIC ("Brains")
 │   ├── authController.js     # Save Firebase users to MySQL, domain validation
-│   ├── rideController.js     # BlaBlaCar price calculation, CRUD for rides
-│   └── bookController.js     # Seat decrement logic, booking management
+│   ├── rideController.js     # BlaBlaCar price calculation, CRUD for rides, lifecycle
+│   ├── bookController.js     # Seat decrement logic, booking management, cancellation penalties
+│   └── reportController.js   # Report filing, pattern-match evaluation, trust score penalties
 │
 ├── routes/                   # THE URLs ("Doors")
 │   ├── authRoutes.js         # POST /api/auth/register, GET /api/auth/profile
-│   ├── rideRoutes.js         # POST /api/rides/create, GET /api/rides/search
-│   └── bookRoutes.js         # POST /api/bookings/new, GET /api/bookings/my
+│   ├── rideRoutes.js         # POST /api/rides/create, GET /api/rides/search, PUT /api/rides/:id/complete
+│   ├── bookRoutes.js         # POST /api/bookings/new, GET /api/bookings/my, PUT /api/bookings/:id/cancel
+│   └── reportRoutes.js       # POST /api/reports/new, GET /api/reports/my
 │
 └── utils/
     └── priceCalculator.js    # Pure function: fuel cost + cap logic
@@ -641,6 +824,9 @@ Frontend/
 │   ├── PriceSlider.tsx       # Capped pricing slider component
 │   ├── MapRoute.tsx          # Mapbox polyline route renderer
 │   ├── EmergencyBadge.tsx    # ⚠️ Strike route indicator badge
+│   ├── BookingSuccess.tsx    # Post-booking confirmation + WhatsApp/Call handoff
+│   ├── ReportIncident.tsx    # Report filing form (reason + description)
+│   ├── TrustBadge.tsx        # Trust score display with warning state
 │   └── ui/                   # Base UI primitives
 │       ├── collapsible.tsx
 │       ├── icon-symbol.tsx
@@ -648,8 +834,11 @@ Frontend/
 │
 ├── services/                 # API CALLERS
 │   ├── api.ts                # Axios instance + interceptors for backend
-│   ├── mapbox.ts             # Mapbox geocoding + directions API calls
+│   ├── mapbox.ts             # Hybrid geocoding (local JSON + Mapbox fallback) + directions API
 │   └── firebase.ts           # Firebase Auth initialization + helpers
+│
+├── data/
+│   └── cityCoordinates.json  # Offline regional hub GPS coordinates
 │
 ├── constants/
 │   ├── theme.ts              # Colors, fonts, spacing tokens
@@ -871,6 +1060,7 @@ require('dotenv').config();
 const authRoutes = require('./routes/authRoutes');
 const rideRoutes = require('./routes/rideRoutes');
 const bookRoutes = require('./routes/bookRoutes');
+const reportRoutes = require('./routes/reportRoutes');
 
 const app = express();
 
@@ -882,6 +1072,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/rides', rideRoutes);
 app.use('/api/bookings', bookRoutes);
+app.use('/api/reports', reportRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -1002,10 +1193,23 @@ module.exports = { calculatePrice };
 
 ```typescript
 import { CONFIG } from '../constants/config';
+import cityCoordinates from '../data/cityCoordinates.json';
 
 const BASE_URL = 'https://api.mapbox.com';
 
+/**
+ * Hybrid Geocoding: Local JSON first, Mapbox API fallback.
+ * Regional hubs (Mukerian, Jalandhar, Phagwara, etc.) resolve offline.
+ * Unknown cities fall back to Mapbox Geocoding API.
+ */
 export async function geocodeCity(cityName: string) {
+  // Step 1: Check local JSON dataset
+  const localMatch = (cityCoordinates as Record<string, { lat: number; lng: number }>)[cityName];
+  if (localMatch) {
+    return [{ name: cityName, lat: localMatch.lat, lng: localMatch.lng }];
+  }
+
+  // Step 2: Fallback to Mapbox Geocoding API
   const url = `${BASE_URL}/geocoding/v5/mapbox.places/${encodeURIComponent(cityName)}.json?access_token=${CONFIG.MAPBOX_TOKEN}&country=IN&limit=5`;
   const response = await fetch(url);
   const data = await response.json();
@@ -1048,6 +1252,7 @@ export async function getRoute(
 - [ ] Calculate `base_price`, `max_cap`, and `per_seat_price` in real-time
 - [ ] Submit ride to `POST /api/rides/create`
 - [ ] Show confirmation with price breakdown
+- [ ] Add Women-Only toggle and Instant Booking toggle with acknowledgment checkbox
 
 **Price Slider UX:**
 
@@ -1058,6 +1263,35 @@ export async function getRoute(
 
  Base Cost: ₹280  |  You Set: ₹180  |  Per Seat (3): ₹60
 ```
+
+---
+
+### Step 6: Trust System, Reports & Lifecycle (Day 9–10)
+
+**Goal:** Report-based accountability, ride lifecycle completion, and tiered cancellation penalties are functional.
+
+#### Day 9: Report Module
+
+- [ ] Build `reportController.js` — file report, pattern-match evaluation, trust score deduction
+- [ ] Build `reportRoutes.js` — wire `POST /api/reports/new`, `GET /api/reports/my`
+- [ ] Implement the **Pattern-Match Shield**: single report = warning only, 2+ different reporters = penalty
+- [ ] Handle `no_show` reports with **immediate −5 trust penalty** (bypass shield)
+- [ ] Build `ReportIncident.tsx` component — reason selector + description + cooldown indicator
+- [ ] Test pattern-matching logic with Postman
+
+#### Day 10: Ride Lifecycle & Cancellation Penalties
+
+- [ ] Add ride completion prompt logic — 2 hours after departure, prompt driver on next app open
+- [ ] Implement `PUT /api/rides/:id/complete` — mark ride completed, transition bookings
+- [ ] Implement 12-hour grace period — clean ride streak increment if no reports filed
+- [ ] Implement auto-completion fallback — auto-complete 24 hours after departure
+- [ ] Add **tiered cancellation penalties** to `PUT /api/bookings/:id/cancel`:
+  - More than 4 hours before departure → free
+  - 4 hours to 30 minutes → −2 Trust Points
+  - Under 30 minutes → −5 Trust Points
+- [ ] Build `BookingSuccess.tsx` component — WhatsApp + Call native handoff buttons
+- [ ] Build `TrustBadge.tsx` component — display trust score with warning state (<50)
+- [ ] Test end-to-end: post ride → book → complete → grace period → streak increment
 
 ---
 
@@ -1103,14 +1337,16 @@ async function createRide(req, res) {
         destination_city, dest_lat, dest_lng, distance_km,
         departure_time, available_seats, vehicle_type,
         vehicle_mileage, fuel_type, base_price,
-        driver_set_price, capped_price, is_emergency_route)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        driver_set_price, capped_price, is_emergency_route,
+        is_women_only, instant_booking, instant_booking_ack)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         req.userId, origin_city, origin_lat, origin_lng,
         destination_city, dest_lat, dest_lng, distance_km,
         departure_time, available_seats, vehicle_type,
         vehicle_mileage, fuel_type, pricing.base_price,
-        driver_set_price, pricing.capped_price, is_emergency_route || false
+        driver_set_price, pricing.capped_price, is_emergency_route || false,
+        is_women_only || false, instant_booking || false, instant_booking_ack || false
       ]
     );
 
@@ -1389,17 +1625,21 @@ User Types "Phagwara"
         │
         ▼
 ┌────────────────────┐
-│ Mapbox Geocoding   │──▶ Returns: { lat: 31.224, lng: 75.770 }
-│ API                │
+│ Local JSON Lookup  │──▶ Found: { lat: 31.224, lng: 75.770 }  ✅ (no API call)
 └────────────────────┘
         │
         ▼
-User Types "Jalandhar"
+User Types "Chandigarh"
         │
         ▼
 ┌────────────────────┐
-│ Mapbox Geocoding   │──▶ Returns: { lat: 31.326, lng: 75.576 }
-│ API                │
+│ Local JSON Lookup  │──▶ Not Found ❌
+└────────┬───────────┘
+         │ fallback
+         ▼
+┌────────────────────┐
+│ Mapbox Geocoding   │──▶ Returns: { lat: 30.733, lng: 76.779 }
+│ API (fallback)     │
 └────────────────────┘
         │
         ▼
@@ -1784,6 +2024,11 @@ All API responses follow a consistent format:
 | 404       | `USER_NOT_FOUND`        | Firebase UID not in MySQL                   |
 | 409       | `ALREADY_BOOKED`        | Passenger already booked this ride          |
 | 409       | `DUPLICATE_EMAIL`       | Email already registered in MySQL           |
+| 400       | `CANCELLATION_PENALTY`  | Cancellation within penalty window          |
+| 400       | `REPORT_COOLDOWN`       | Reporter already filed for this ride        |
+| 200       | `REPORT_WARNING_ONLY`   | Single reporter — warning logged, no penalty|
+| 200       | `REPORT_PATTERN_PENALTY` | 2+ reporters — trust penalty applied        |
+| 200       | `RIDE_COMPLETION_PROMPT` | Ride eligible for completion (2h+ elapsed)  |
 | 500       | `DB_ERROR`              | MySQL query failed                          |
 | 500       | `INTERNAL_ERROR`        | Unexpected server error                     |
 
@@ -2024,6 +2269,11 @@ See **[Section 7.2 — Backend `.env` File](#72-backend-env-file)** for the comp
 - [ ] CORS is configured for production domain
 - [ ] **Navigation passes only IDs** between screens, not full objects (Section 14.3)
 - [ ] Error handling covers all edge cases
+- [ ] **Reports table** created with pattern-match unique constraint
+- [ ] **trust_score** column seeded to 100 for all existing users
+- [ ] **Pattern-match shield** tested — single report = warning, 2+ = penalty
+- [ ] **Ride lifecycle** tested — completion prompt, grace period, auto-completion
+- [ ] **Tiered cancellation penalties** verified (>4h free, ≤4h −2, ≤30m −5)
 
 ### `.gitignore` (Both projects)
 
@@ -2062,8 +2312,11 @@ Thumbs.db
 | 5    | Toggle emergency route              | Show the orange badge                  |
 | 6    | Search for a ride                   | Map with polyline route                |
 | 7    | Book a seat                         | Seat count decrements                  |
-| 8    | Show Postman                        | API requests & responses               |
-| 9    | Show MySQL Workbench                | Data in tables                         |
+| 8    | Complete a ride                     | Ride status → completed, grace timer starts |
+| 9    | File a report                       | Pattern-match warning / penalty in action |
+| 10   | Show trust score                    | TrustBadge component, score deduction  |
+| 11   | Show Postman                        | API requests & responses               |
+| 12   | Show MySQL Workbench                | Data in tables (incl. reports)         |
 
 ---
 
@@ -2082,13 +2335,18 @@ Thumbs.db
 ║                                                              ║
 ║  Register User:    POST /api/auth/register                   ║
 ║  Create Ride:      POST /api/rides/create                    ║
+║  Complete Ride:    PUT  /api/rides/:id/complete               ║
 ║  Search Rides:     GET  /api/rides/search?origin=X&dest=Y    ║
 ║  Book Seat:        POST /api/bookings/new                    ║
+║  File Report:      POST /api/reports/new                     ║
+║  My Reports:       GET  /api/reports/my                      ║
 ║                                                              ║
 ║  Price Formula:    base = (dist × fuel_rate) / mileage       ║
 ║  Price Cap:        max  = base × 1.5                         ║
 ║  Per Seat:         seat = min(driver_price, max) / passengers║
 ║                                                              ║
+║  Trust Score:      Default 100 │ No-show −5 │ Pattern −10    ║
+║  Cancellation:     >4h free │ ≤4h −2 │ ≤30m −5               ║
 ║  Allowed Email:    *@lpu.in ONLY                             ║
 ║  Emergency Mode:   is_emergency_route = true                 ║
 ║                                                              ║
@@ -2097,6 +2355,6 @@ Thumbs.db
 
 ---
 
-*Last Updated: February 27, 2026*
-*Version: 1.1.0 — Added 6 Common Traps & Solutions*
+*Last Updated: February 28, 2026*
+*Version: 1.2.0 — Aligned with SRS v1.2: Trust System, Reports, Ride Lifecycle, Native Handoff*
 *Project: RideMates — University Peer-to-Peer Commute Network*

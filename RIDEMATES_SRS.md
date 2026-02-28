@@ -4,9 +4,9 @@
 
 ---
 
-**Document Version:** 1.0
+**Document Version:** 1.3
 
-**Date:** February 27, 2026
+**Date:** February 28, 2026
 
 **Prepared for:** Lovely Professional University — Capstone Project
 
@@ -19,6 +19,9 @@
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 1.0 | February 27, 2026 | Project Team | Initial SRS creation |
+| 1.1 | February 28, 2026 | Project Team | Added Trust System fields to schema, hybrid geocoding model, Instant Booking Trust Contract, Report Module for mutual accountability, and Post-Booking Native Handoff UI |
+| 1.2 | February 28, 2026 | Project Team | v2.1 Blueprint: Ride Lifecycle completion trigger, tiered passenger cancellation penalties, pattern-match reporting shield (single report = warning only), schema additions (current_streak, bookings.is_reported, rides.completed_at) |
+| 1.3 | February 28, 2026 | Project Team | Tiered Pricing: vehicle-specific maintenance multipliers (bike/scooter 1.2x, auto 1.35x, car 1.5x), vehicle_type ENUM expanded to include 'scooter', Section 8.1 algorithm reworked with multi-vehicle worked examples |
 
 ---
 
@@ -43,6 +46,12 @@
    - 3.3 [Deployment Architecture](#33-deployment-architecture)
 4. [Specific Requirements](#4-specific-requirements)
    - 4.1 [Functional Requirements](#41-functional-requirements)
+     - 4.1.1 [Authentication Module](#411-authentication-module)
+     - 4.1.2 [Ride Management Module](#412-ride-management-module)
+     - 4.1.3 [Booking Module](#413-booking-module)
+     - 4.1.4 [Map & Routing Module](#414-map--routing-module)
+     - 4.1.5 [Report & Accountability Module](#415-report--accountability-module)
+     - 4.1.6 [Ride Lifecycle Module](#416-ride-lifecycle-module)
    - 4.2 [External Interface Requirements](#42-external-interface-requirements)
    - 4.3 [Non-Functional Requirements](#43-non-functional-requirements)
 5. [Data Requirements](#5-data-requirements)
@@ -61,6 +70,8 @@
 8. [Algorithms](#8-algorithms)
    - 8.1 [Pricing Algorithm](#81-pricing-algorithm)
    - 8.2 [Concurrency Control — Booking Transaction](#82-concurrency-control--booking-transaction)
+   - 8.3 [Trust Score & Cancellation Penalty Algorithm](#83-trust-score--cancellation-penalty-algorithm)
+   - 8.4 [Pattern-Match Report Evaluation Algorithm](#84-pattern-match-report-evaluation-algorithm)
 9. [User Interface Requirements](#9-user-interface-requirements)
    - 9.1 [Screen Inventory](#91-screen-inventory)
    - 9.2 [Screen Flow](#92-screen-flow)
@@ -107,7 +118,7 @@ This document describes both the functional behavior of the system and the non-f
 - In-app chat or messaging between driver and passenger
 - Multi-university federation (currently single university)
 - Push notification system
-- Driver/passenger rating and review system
+- Automated star-based rating and review system (replaced by report-based mutual accountability — see Section 4.1.5)
 
 ### 1.3 Definitions, Acronyms, and Abbreviations
 
@@ -222,6 +233,9 @@ The system provides the following high-level functions:
 | PF-08 | **Ride History** | View past rides (as driver) and bookings (as passenger) |
 | PF-09 | **Profile Management** | View and update user profile information |
 | PF-10 | **Ride Cancellation** | Cancel a ride (driver) or a booking (passenger) |
+| PF-11 | **Trust System** | Track user trust score and good-citizen streaks; enforce penalties for no-shows and bad conduct |
+| PF-12 | **Report & Accountability** | Allow users to flag no-shows and bad conduct incidents, triggering pattern-recognition penalties |
+| PF-13 | **Post-Booking Handoff** | Provide native WhatsApp and Call links for off-platform coordination after booking confirmation |
 
 ### 2.3 User Classes and Characteristics
 
@@ -273,7 +287,7 @@ The system supports two user roles. A single registered user can operate in **bo
 | Constraint | Description | Rationale |
 |------------|-------------|-----------|
 | **University Email Only** | Registration restricted to `@lpu.in` email domain | Core safety feature; eliminates unverified users |
-| **Price Cap** | Driver-set price cannot exceed 1.5× the calculated base fuel cost | Legal compliance with India's Motor Vehicles Act (White Plate regulations) |
+| **Tiered Price Cap** | The driver-set price is restricted by a maintenance multiplier specific to the vehicle type (Bike/Scooter: 1.2x, Auto: 1.35x, Car: 1.5x) to ensure legal non-commercial compliance | Legal compliance with India's Motor Vehicles Act (White Plate regulations) |
 | **No Profit** | System is designed for cost-sharing only, not commercial ride-hailing | Regulatory requirement for non-commercial vehicles |
 | **Token Expiry** | Firebase ID Tokens expire every 60 minutes; must be refreshed before each API call | Firebase security architecture |
 | **Timezone Handling** | All datetime values must be stored in UTC (ISO 8601) and converted to local time on display | Prevents IST/UTC mismatch between phone and Aiven MySQL server |
@@ -300,7 +314,7 @@ The system supports two user roles. A single registered user can operate in **bo
 |---|------------|----------------------|
 | D1 | Firebase Auth | Users cannot register or login; all API calls fail (401) |
 | D2 | Aiven MySQL | All read/write operations fail; app shows error states |
-| D3 | Mapbox Geocoding API | City-to-coordinate conversion fails; map cannot render routes |
+| D3 | Mapbox Geocoding API | Fallback geocoding fails for cities not in the local JSON dataset; core regional hubs remain functional via offline data |
 | D4 | Mapbox Directions API | Route polyline cannot be computed or displayed |
 | D5 | Device GPS (expo-location) | User's current location cannot be auto-detected; manual entry required |
 | D6 | Internet connectivity | All API calls and external service integrations fail |
@@ -380,7 +394,7 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 | Backend | Node.js + Express.js | 18.x LTS + 4.x | Non-blocking I/O for concurrent requests; JavaScript full-stack |
 | Database | MySQL (InnoDB) | 8.0 | ACID-compliant; supports transactions with row-level locking for concurrent booking |
 | Authentication | Firebase Auth | Latest | Managed email OTP; short-lived tokens (60-min); domain restriction |
-| Maps — Geocoding | Mapbox Geocoding API | v5 | Converts city text to GPS coordinates |
+| Maps — Geocoding | Local JSON + Mapbox Geocoding API (fallback) | v5 | Resolves regional hub coordinates offline; falls back to Mapbox for unknown cities |
 | Maps — Routing | Mapbox Directions API | v5 | Computes driving route with polyline geometry |
 | Device Location | expo-location | Latest | Native GPS access with permission management |
 | HTTP Client | Axios | Latest | Promise-based; request/response interceptors for token attachment |
@@ -437,8 +451,8 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 | ID | Requirement | Priority | Description |
 |----|------------|----------|-------------|
 | FR-RIDE-01 | Create Ride | Critical | An authenticated driver SHALL be able to post a ride with: origin city, destination city, GPS coordinates, distance, departure time, available seats, vehicle type, mileage, fuel type, and desired price. |
-| FR-RIDE-02 | Auto Price Calculation | Critical | The system SHALL auto-calculate `base_price` as `(distance_km × fuel_rate) / vehicle_mileage` and hard-cap the `capped_price` at `base_price × 1.5`. |
-| FR-RIDE-03 | Price Cap Enforcement | Critical | If the driver's set price exceeds the max cap, the system SHALL clamp it to the cap value. The driver SHALL NOT be able to exceed this limit. |
+| FR-RIDE-02 | Auto Price Calculation | Critical | The system SHALL auto-calculate `base_price` as `(distance_km × fuel_rate) / vehicle_mileage` and apply a **vehicle-specific maintenance multiplier** (1.2x for bikes/scooters, 1.35x for autos, 1.5x for cars) to establish the `max_allowed_price`. The `capped_price` SHALL be `MIN(driver_set_price, max_allowed_price)`. |
+| FR-RIDE-03 | Price Cap Enforcement | Critical | If the driver's set price exceeds the vehicle-specific max cap, the system SHALL clamp it to the cap value. The driver SHALL NOT be able to exceed this limit. The multiplier is determined by the ride's `vehicle_type`. |
 | FR-RIDE-04 | Search Rides | Critical | An authenticated user SHALL be able to search rides by `origin_city` and `destination_city`, with optional filters for `date` and `emergency_only`. |
 | FR-RIDE-05 | View Ride Details | High | The system SHALL return full ride details (including driver info, route, price breakdown) for a specific `ride_id`. |
 | FR-RIDE-06 | Update Ride | Medium | The driver who created a ride SHALL be able to update it (e.g., change departure time or available seats). |
@@ -447,6 +461,8 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 | FR-RIDE-09 | Strike Resilience Toggle | High | The driver SHALL be able to set `is_emergency_route = true` to indicate alternate village link-road routing during highway disruptions. |
 | FR-RIDE-10 | Emergency Route Filter | Medium | Search results SHALL support filtering to show only rides with `is_emergency_route = true`. |
 | FR-RIDE-11 | Emergency Badge | Medium | Rides with `is_emergency_route = true` SHALL display an `⚠️ ALTERNATE ROUTE` badge in the UI. |
+| FR-RIDE-12 | Ride Completion Prompt | High | 2 hours after the scheduled `departure_time`, the system SHALL prompt the driver (via in-app notification on next app open): "Is your trip to {destination_city} finished?" The driver SHALL tap "Complete Ride" to set `status = 'completed'` and record `completed_at`. |
+| FR-RIDE-13 | Clean Ride Streak Award | High | Once a ride is marked as completed, the system SHALL wait 12 hours. If no reports are filed against the ride within that 12-hour window, the system SHALL increment `current_streak` by 1 for **both** the driver and all passengers who had confirmed bookings on that ride. |
 
 #### 4.1.3 Booking Module
 
@@ -459,13 +475,16 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 | FR-BOOK-05 | Duplicate Prevention | High | The system SHALL prevent a passenger from booking the same ride twice, enforced by a `UNIQUE KEY (ride_id, passenger_id)` constraint. Violation returns a `409` error. |
 | FR-BOOK-06 | Per-Seat Price | High | The system SHALL calculate `price_paid` as the per-seat share of the `capped_price` at booking time. |
 | FR-BOOK-07 | View My Bookings | Medium | An authenticated user SHALL be able to retrieve all their bookings via `GET /api/bookings/my`. |
-| FR-BOOK-08 | Cancel Booking | Medium | A passenger SHALL be able to cancel a confirmed booking. Upon cancellation, `available_seats` SHALL be incremented back. |
+| FR-BOOK-08 | Cancel Booking | Medium | A passenger SHALL be able to cancel a confirmed booking. Upon cancellation, `available_seats` SHALL be incremented back. The system SHALL apply a tiered Trust Score penalty based on proximity to departure (see FR-BOOK-11). |
+| FR-BOOK-11 | Cancellation Penalty Tiers | High | Passenger booking cancellation penalties SHALL follow a tiered model: **(a)** Cancellation **> 4 hours** before departure → **0 penalty** (free cancellation). **(b)** Cancellation **≤ 4 hours but > 30 minutes** before departure → **−2 Trust Points**. **(c)** Cancellation **≤ 30 minutes** before departure → **−5 Trust Points** (equivalent to a No-Show). This protects drivers from last-minute seat loss. |
+| FR-BOOK-09 | Instant Booking Acknowledgment | Critical | When publishing a ride with Instant Booking enabled, the system SHALL require the driver to check an "Instant Booking Acknowledgment" checkbox, legally binding them to the Trust Score penalty (see Section 4.1.5) for last-minute cancellations after a passenger has auto-booked. The ride SHALL NOT be published until this acknowledgment is checked. |
+| FR-BOOK-10 | Women-Only Instant Booking | High | If a ride is marked as `is_women_only = true`, only passengers whose profile gender is `female` SHALL be permitted to use the Instant Booking path. |
 
 #### 4.1.4 Map & Routing Module
 
 | ID | Requirement | Priority | Description |
 |----|------------|----------|-------------|
-| FR-MAP-01 | Geocoding | Critical | The system SHALL convert city names to GPS coordinates (latitude, longitude) using the Mapbox Geocoding API. |
+| FR-MAP-01 | Hybrid Geocoding | Critical | The system SHALL resolve GPS coordinates for city names via a **local JSON dataset** containing regional hub locations (e.g., Mukerian, Jalandhar, Phagwara). Mapbox Geocoding API SHALL be used only as a fallback for cities not found in the local dataset. Mapbox Directions API SHALL still be used for route polyline generation and distance computation. This hybrid approach ensures the app remains free and functional even when the Mapbox Geocoding quota is exhausted. |
 | FR-MAP-02 | Route Computation | Critical | The system SHALL compute the driving route between origin and destination using the Mapbox Directions API, returning a polyline geometry. |
 | FR-MAP-03 | Route Display | Critical | The frontend SHALL render the computed route as a visible polyline on a `react-native-maps` MapView component. |
 | FR-MAP-04 | Map Markers | High | The map SHALL display a green marker at the origin ("Pickup") and a red marker at the destination ("Drop-off"). |
@@ -473,6 +492,30 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 | FR-MAP-06 | Location Permission | Critical | The app SHALL request foreground location permission from the user using `expo-location`. The map SHALL NOT render until permission is granted and coordinates are available. |
 | FR-MAP-07 | Permission Error State | High | If location permission is denied, the app SHALL display a user-friendly message instructing them to enable it in device Settings. |
 | FR-MAP-08 | Loading State | High | While location is being fetched, the app SHALL display a loading indicator (spinner) instead of an empty or broken map. |
+
+#### 4.1.5 Report & Accountability Module
+
+| ID | Requirement | Priority | Description |
+|----|------------|----------|-------------|
+| FR-RPT-01 | Report Incident | Critical | An authenticated user SHALL be able to file a report against another user for a specific completed or no-show ride, selecting a reason from: `no_show`, `bad_conduct`, `unsafe_driving`, `harassment`. |
+| FR-RPT-02 | One Report Per Ride | High | The system SHALL enforce a maximum of one report per reporter per ride, using a `UNIQUE KEY (ride_id, reporter_id)` constraint. |
+| FR-RPT-03 | Single Report — Warning Only | Critical | When a **single** report for `bad_conduct`, `unsafe_driving`, or `harassment` is filed against a user, the system SHALL issue a **System Warning** to the reported user but SHALL NOT deduct any trust points. The booking's `is_reported` flag SHALL be set to `true`. This is the "Shield" — one person can lie, so a single report is never punitive. |
+| FR-RPT-04 | Pattern-Match Penalty Trigger | Critical | A trust score deduction SHALL **only** occur when a user receives **2 or more reports from different reporters across different rides** within a rolling 30-day window. At that point, the system SHALL apply a **−10 point** deduction per qualifying report and reset `current_streak` to 0. Two unrelated people reporting the same behavior constitutes a pattern. |
+| FR-RPT-05 | Escalated Pattern Penalty | High | If a user accumulates **3 or more pattern-matched reports** (from different reporters across different rides) within a rolling 30-day window, the system SHALL flag the account for review and apply an additional escalated penalty of **−25 points** on top of per-report deductions. |
+| FR-RPT-06 | Streak Increment | Medium | Upon each completed ride with no incidents (no reports filed within 12 hours of ride completion — see FR-RIDE-13), the system SHALL increment the user's `current_streak` by 1. |
+| FR-RPT-09 | No-Show Immediate Penalty | Critical | Reports filed with reason `no_show` SHALL bypass the pattern-match shield and immediately deduct **−5 Trust Points** from the reported user and reset `current_streak` to 0. A no-show is a verifiable objective event, not a subjective opinion. |
+| FR-RPT-07 | Trust Score Display | Medium | The user's current `trust_score` SHALL be displayed on their Profile screen. Scores below 50 SHALL display a warning badge. |
+| FR-RPT-08 | Report Cooldown | Medium | A user SHALL NOT be able to file more than 3 reports in a single 24-hour period, to prevent abuse of the reporting system. |
+
+#### 4.1.6 Ride Lifecycle Module
+
+| ID | Requirement | Priority | Description |
+|----|------------|----------|-------------|
+| FR-LIFE-01 | Completion Prompt | High | 2 hours after the scheduled `departure_time`, the system SHALL display an in-app prompt to the driver on their next app open: "Is your trip to {destination_city} finished?" with a "Complete Ride" button. |
+| FR-LIFE-02 | Mark Ride Complete | High | When the driver taps "Complete Ride", the system SHALL set `rides.status = 'completed'` and record the current timestamp in `rides.completed_at`. All associated confirmed bookings SHALL also transition to `status = 'completed'`. |
+| FR-LIFE-03 | 12-Hour Grace Period | High | After `completed_at` is recorded, a 12-hour grace window begins. During this window, all participants (driver and passengers) may file reports against each other for that ride. |
+| FR-LIFE-04 | Clean Ride Award | High | If no reports are filed against the ride within the 12-hour grace period after completion, the system SHALL increment `current_streak` by 1 for the driver and all passengers with confirmed bookings on that ride. |
+| FR-LIFE-05 | Auto-Completion Fallback | Medium | If the driver does not tap "Complete Ride" within 24 hours after `departure_time`, the system SHALL automatically set `status = 'completed'` and record `completed_at` to prevent rides from lingering in 'active' state indefinitely. |
 
 ### 4.2 External Interface Requirements
 
@@ -482,11 +525,11 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 |-----------|-------------|
 | **Login Screen** | Email input field, password field, "Register" and "Login" buttons. Domain validation message on invalid email. |
 | **Home Screen** | Dashboard with two primary actions: "Post a Ride" and "Find a Ride." Displays recent activity summary. |
-| **Post Ride Screen** | Form with city inputs (origin/destination), date/time picker, seat count, vehicle details, and a price slider with visual cap indicator. Emergency route toggle switch. |
+| **Post Ride Screen** | Form with city inputs (origin/destination), date/time picker, seat count, vehicle details, price slider with visual cap indicator, emergency route toggle, women-only toggle, and Instant Booking toggle with Trust Contract acknowledgment checkbox. |
 | **Search/Map Screen** | Origin and destination input fields with autocomplete. Interactive map displaying the route polyline. List of matching rides below the map as scrollable cards. |
 | **Booking Screen** | Ride details card with driver info, route, price breakdown, and "Book Now" button. Fetches fresh data on mount to prevent ghost seats. |
 | **My Rides Screen** | Two tabs — "As Driver" (rides I posted) and "As Passenger" (rides I booked). Status badges for active/completed/cancelled. |
-| **Profile Screen** | Displays user name, email, phone, role. Edit functionality for mutable fields. |
+| **Profile Screen** | Displays user name, email, phone, role, trust score, and current streak. Edit functionality for mutable fields. Trust score below 50 shows a warning badge. |
 
 #### 4.2.2 Hardware Interfaces
 
@@ -593,8 +636,13 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 | `university` | VARCHAR(100) | DEFAULT 'LPU' | University name |
 | `role` | ENUM('student','faculty') | DEFAULT 'student' | User role |
 | `profile_photo` | VARCHAR(255) | NULLABLE | URL to profile photo |
+| `gender` | ENUM('male','female','other') | DEFAULT 'other' | User's gender (used for women-only ride filtering) |
+| `trust_score` | INT | NOT NULL, DEFAULT 100 | User's trust score; starts at 100, decremented by penalties for no-shows/bad-conduct pattern-matched reports |
+| `current_streak` | INT | NOT NULL, DEFAULT 0 | Consecutive completed rides without incident ("Good Citizen" streak); resets to 0 on any penalty |
 | `created_at` | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | Registration timestamp |
 | `updated_at` | TIMESTAMP | ON UPDATE CURRENT_TIMESTAMP | Last update timestamp |
+
+> **Trust System Note:** New users start with `trust_score = 100` and `current_streak = 0`. A single conduct report triggers only a warning (the "Shield"). Point deductions (−10 per report) occur only when 2+ reports from different people across different rides establish a pattern. No-Show reports bypass the shield and immediately deduct −5 points. Three pattern-matched reports in 30 days triggers an escalated penalty (−25 additional). The streak resets on any penalty and increments on clean ride completions (12-hour grace period after ride completion).
 
 #### Table: `rides`
 
@@ -611,14 +659,18 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 | `distance_km` | DECIMAL(6,2) | NOT NULL | Route distance in kilometers |
 | `departure_time` | DATETIME | NOT NULL | Departure time (stored in UTC) |
 | `available_seats` | TINYINT | NOT NULL, CHECK ≥ 0 | Currently available seats |
-| `vehicle_type` | ENUM('car','bike','auto') | DEFAULT 'car' | Type of vehicle |
+| `vehicle_type` | ENUM('bike','scooter','auto','car') | DEFAULT 'car' | Type of vehicle (determines maintenance multiplier: bike/scooter 1.2x, auto 1.35x, car 1.5x) |
 | `vehicle_mileage` | DECIMAL(5,2) | DEFAULT 15.00 | Vehicle fuel efficiency (km/l) |
 | `fuel_type` | ENUM('petrol','diesel','cng','electric') | DEFAULT 'petrol' | Fuel type |
 | `base_price` | DECIMAL(8,2) | NOT NULL | System-calculated base fuel cost |
 | `driver_set_price` | DECIMAL(8,2) | NOT NULL | Price set by driver (may be clamped) |
-| `capped_price` | DECIMAL(8,2) | NOT NULL | min(driver_set_price, max_cap) |
+| `capped_price` | DECIMAL(8,2) | NOT NULL | min(driver_set_price, vehicle-specific max cap) |
 | `is_emergency_route` | BOOLEAN | DEFAULT FALSE | Strike resilience flag |
+| `is_women_only` | BOOLEAN | DEFAULT FALSE | If true, only female-verified passengers may use Instant Booking on this ride |
+| `instant_booking` | BOOLEAN | DEFAULT FALSE | If true, passengers can auto-book without driver approval |
+| `instant_booking_ack` | BOOLEAN | DEFAULT FALSE | Driver has acknowledged the Trust Contract penalty clause for Instant Booking |
 | `status` | ENUM('active','completed','cancelled') | DEFAULT 'active' | Ride lifecycle status |
+| `completed_at` | TIMESTAMP | NULLABLE | Timestamp when the driver confirmed ride completion (used for 12-hour report grace period) |
 | `created_at` | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | Creation timestamp |
 
 #### Table: `bookings`
@@ -631,9 +683,26 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 | `seats_booked` | TINYINT | DEFAULT 1 | Number of seats reserved |
 | `price_paid` | DECIMAL(8,2) | NOT NULL | Total price paid for booked seats |
 | `status` | ENUM('confirmed','cancelled','completed') | DEFAULT 'confirmed' | Booking status |
+| `is_reported` | BOOLEAN | DEFAULT FALSE | Flag set to true when a report has been filed against this booking's counterpart |
+| `cancellation_penalty` | INT | DEFAULT 0 | Trust score points deducted due to late cancellation (0, 2, or 5) |
 | `booked_at` | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | Booking timestamp |
 
 **Unique Constraint:** `UNIQUE KEY (ride_id, passenger_id)` — prevents duplicate bookings.
+
+#### Table: `reports`
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | INT | PRIMARY KEY, AUTO_INCREMENT | Unique report identifier |
+| `ride_id` | INT | NOT NULL, FK → rides(id) | Reference to the ride the incident occurred on |
+| `reporter_id` | INT | NOT NULL, FK → users(id) | User who filed the report |
+| `reported_user_id` | INT | NOT NULL, FK → users(id) | User being reported |
+| `reason` | ENUM('no_show','bad_conduct','unsafe_driving','harassment') | NOT NULL | Category of the incident |
+| `description` | TEXT | NULLABLE | Optional free-text description of the incident |
+| `penalty_applied` | INT | NOT NULL, DEFAULT 10 | Trust score points deducted from the reported user |
+| `created_at` | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | Report timestamp |
+
+**Unique Constraint:** `UNIQUE KEY (ride_id, reporter_id)` — prevents duplicate reports per ride per user.
 
 #### Table: `fuel_rates`
 
@@ -657,6 +726,8 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 | Fuel Rate | DECIMAL(6,2) | 1.00 to 9999.99 (₹/litre) | fuel_rates table |
 | Vehicle Mileage | DECIMAL(5,2) | 1.00 to 999.99 (km/l) | User input |
 | Price | DECIMAL(8,2) | 0.01 to 999999.99 (₹) | Calculated by pricing algorithm |
+| **Trust Score** | INT | 0 to 100 (practical), no hard lower bound | Derived from reports and cancellation penalties |
+| **Current Streak** | INT | 0+ | Incremented on clean ride completions; reset on any penalty |
 | Firebase UID | VARCHAR(128) | Alphanumeric, up to 128 chars | Firebase Auth |
 | Firebase ID Token | string (JWT) | ~1000 chars; expires every 60 min | Firebase SDK |
 
@@ -671,10 +742,14 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 │     full_name          │
 │     email (UQ)         │         ┌────────────────────────┐
 │     phone              │         │        RIDES           │
-│     university         │         ├────────────────────────┤
-│     role               │    ┌───▶│ PK  id                 │
-│     created_at         │    │    │ FK  driver_id ─────────┤────┐
-└────────┬───────────────┘    │    │     origin_city        │    │
+│     gender             │         ├────────────────────────┤
+│     university         │    ┌───▶│ PK  id                 │
+│     role               │    │    │ FK  driver_id ─────────┤────┐
+│     trust_score (100)  │    │    │     origin_city        │    │
+│     current_streak (0) │    │    │     is_women_only      │    │
+│     created_at         │    │    │     instant_booking    │    │
+└────────┬───────────────┘    │    │     instant_booking_ack│    │
+         │                    │    │     completed_at       │    │
          │                    │    │     origin_lat/lng     │    │
          │   1:N (as driver)  │    │     dest_city          │    │
          └────────────────────┘    │     dest_lat/lng       │    │
@@ -699,6 +774,8 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
          └─────────────────────────│     seats_booked       │  │
                                    │     price_paid         │  │
                                    │     status             │  │
+                                   │     is_reported        │  │
+                                   │     cancellation_penalty│  │
                                    │     booked_at          │  │
                                    └────────────────────────┘  │
                                                                │
@@ -713,6 +790,19 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
                     │     rate_per_litre  │
                     │     updated_at      │
                     └─────────────────────┘
+
+                    ┌─────────────────────┐
+                    │      REPORTS        │
+                    ├─────────────────────┤
+                    │ PK  id              │
+                    │ FK  ride_id ────────│──▶ rides.id
+                    │ FK  reporter_id ────│──▶ users.id
+                    │ FK  reported_user_id│──▶ users.id
+                    │     reason          │
+                    │     description     │
+                    │     penalty_applied │
+                    │     created_at      │
+                    └─────────────────────┘
 ```
 
 **Relationship Summary:**
@@ -722,6 +812,9 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 | users → rides | 1:N | One user (driver) can post many rides |
 | rides → bookings | 1:N | One ride can have many bookings |
 | users → bookings | 1:N | One user (passenger) can have many bookings |
+| users → reports (as reporter) | 1:N | One user can file many reports |
+| users → reports (as reported) | 1:N | One user can be reported many times |
+| rides → reports | 1:N | One ride can have multiple reports from different users |
 
 ---
 
@@ -1167,9 +1260,17 @@ All error responses follow a consistent JSON structure:
 
 ## 8. Algorithms
 
-### 8.1 Pricing Algorithm
+### 8.1 Pricing Algorithm (Tiered by Vehicle Type)
 
-**Purpose:** Calculate a capped ride price that ensures cost-sharing without commercial profit.
+**Purpose:** Calculate a vehicle-specific capped ride price that ensures cost-sharing without commercial profit. Different vehicles incur different maintenance costs, so the price ceiling varies by type.
+
+**Maintenance Multiplier Table:**
+
+| Vehicle Type | Multiplier | Rationale |
+|-------------|------------|----------|
+| `bike` / `scooter` | 1.2x | Low maintenance, low wear-and-tear |
+| `auto` | 1.35x | Moderate maintenance, three-wheeler upkeep |
+| `car` | 1.5x | Highest maintenance — tyres, engine oil, insurance |
 
 **Input Parameters:**
 
@@ -1178,47 +1279,71 @@ All error responses follow a consistent JSON structure:
 | `distance_km` | Mapbox Directions API | DECIMAL |
 | `fuel_rate` | `fuel_rates` table in MySQL | DECIMAL (₹/litre) |
 | `vehicle_mileage` | User input | DECIMAL (km/l) |
+| `vehicle_type` | User input (ride form) | ENUM('bike','scooter','auto','car') |
 | `driver_set_price` | User input via slider | DECIMAL (₹) |
-| `PRICE_CAP_MULTIPLIER` | Environment variable | FLOAT (default: 1.5) |
 
 **Algorithm (Pseudocode):**
 
 ```
-FUNCTION calculatePrice(distance_km, fuel_rate, vehicle_mileage, driver_set_price):
+FUNCTION calculatePrice(distance_km, fuel_rate, vehicle_mileage, vehicle_type, driver_set_price):
 
     // Step 1: Calculate baseline fuel cost
     base_cost = (distance_km × fuel_rate) / vehicle_mileage
 
-    // Step 2: Calculate the maximum allowed price (hard cap)
-    max_cap = base_cost × PRICE_CAP_MULTIPLIER
+    // Step 2: Lookup vehicle-specific maintenance multiplier
+    IF vehicle_type IN ('bike', 'scooter'):
+        multiplier = 1.2
+    ELSE IF vehicle_type == 'auto':
+        multiplier = 1.35
+    ELSE:   // 'car' or unknown — default to highest
+        multiplier = 1.5
 
-    // Step 3: Clamp driver's price to the cap
-    capped_price = MIN(driver_set_price, max_cap)
+    // Step 3: Calculate the maximum allowed price (vehicle-specific cap)
+    max_allowed = base_cost × multiplier
 
-    // Step 4: Return all values (rounded to 2 decimal places)
+    // Step 4: Clamp driver's price to the cap
+    capped_price = MIN(driver_set_price, max_allowed)
+
+    // Step 5: Return all values (rounded to 2 decimal places)
     RETURN {
-        base_price:  ROUND(base_cost, 2),
-        max_allowed: ROUND(max_cap, 2),
-        capped_price: ROUND(capped_price, 2)
+        base_price:   ROUND(base_cost, 2),
+        multiplier:   multiplier,
+        max_allowed:  ROUND(max_allowed, 2),
+        capped_price: ROUND(capped_price, 2),
+        was_clamped:  driver_set_price > max_allowed
     }
 
 END FUNCTION
 ```
 
-**Complexity:** O(1) — constant time, single arithmetic computation.
+**Complexity:** O(1) — constant time, single arithmetic computation with a lookup.
 
-**Worked Example:**
+**Worked Example — Same Route, Different Vehicles:**
 
 ```
-Input:  distance_km = 40, fuel_rate = 105, mileage = 15, driver_price = 350
+Common Input: distance_km = 40, fuel_rate = ₹105/litre
 
-Step 1: base_cost = (40 × 105) / 15 = 4200 / 15 = ₹280.00
-Step 2: max_cap   = 280 × 1.5 = ₹420.00
-Step 3: capped    = MIN(350, 420) = ₹350.00  ✅ Within cap
+┌───────────┬─────────┬────────────┬────────────┬──────────┬───────────┐
+│ Vehicle   │ Mileage │ base_cost  │ Multiplier │ max_cap  │ Per-Seat  │
+│           │ (km/l)  │ (fuel)     │            │ (ceiling)│ (3 seats) │
+├───────────┼─────────┼────────────┼────────────┼──────────┼───────────┤
+│ Bike      │ 45      │ ₹93.33     │ 1.2x       │ ₹112.00  │ ₹37.33    │
+│ Auto      │ 25      │ ₹168.00    │ 1.35x      │ ₹226.80  │ ₹75.60    │
+│ Car       │ 15      │ ₹280.00    │ 1.5x       │ ₹420.00  │ ₹140.00   │
+└───────────┴─────────┴────────────┴────────────┴──────────┴───────────┘
 
-Output: { base_price: 280.00, max_allowed: 420.00, capped_price: 350.00 }
+Detailed — Bike Example:
+  Step 1: base_cost   = (40 × 105) / 45 = 4200 / 45 = ₹93.33
+  Step 2: multiplier  = 1.2  (bike)
+  Step 3: max_allowed = 93.33 × 1.2 = ₹112.00
+  Step 4: driver asks ₹150 → capped_price = MIN(150, 112) = ₹112.00  ⚠️ Clamped
 
-Per-seat (3 passengers): 350 / 3 = ₹116.67
+Detailed — Car Example:
+  Step 1: base_cost   = (40 × 105) / 15 = 4200 / 15 = ₹280.00
+  Step 2: multiplier  = 1.5  (car)
+  Step 3: max_allowed = 280 × 1.5 = ₹420.00
+  Step 4: driver asks ₹350 → capped_price = MIN(350, 420) = ₹350.00  ✅ Within cap
+  Per-seat (3 passengers): 350 / 3 = ₹116.67
 ```
 
 ### 8.2 Concurrency Control — Booking Transaction
@@ -1296,6 +1421,149 @@ WITH SELECT ... FOR UPDATE:
     Result: Exactly 1 booking created. No overselling. ✅
 ```
 
+### 8.3 Trust Score & Cancellation Penalty Algorithm
+
+**Purpose:** Apply tiered trust score penalties for passenger booking cancellations based on proximity to departure time.
+
+**Algorithm (Pseudocode):**
+
+```
+FUNCTION calculateCancellationPenalty(departure_time, cancellation_time):
+
+    hours_before = (departure_time - cancellation_time) / 3600  // in hours
+
+    // Tier 1: Free cancellation (> 4 hours before departure)
+    IF hours_before > 4 THEN
+        penalty = 0
+
+    // Tier 2: Late cancellation (≤ 4 hours but > 30 minutes)
+    ELSE IF hours_before > 0.5 THEN
+        penalty = 2
+
+    // Tier 3: Last-minute / No-Show equivalent (≤ 30 minutes)
+    ELSE
+        penalty = 5
+
+    END IF
+
+    RETURN penalty
+
+END FUNCTION
+
+FUNCTION applyCancellationPenalty(booking_id, passenger_id, departure_time):
+
+    penalty = calculateCancellationPenalty(departure_time, NOW())
+
+    IF penalty > 0 THEN
+        UPDATE users SET trust_score = trust_score - penalty,
+                         current_streak = 0
+                     WHERE id = passenger_id
+
+        UPDATE bookings SET cancellation_penalty = penalty
+                        WHERE id = booking_id
+    END IF
+
+    // Restore seat regardless of penalty
+    UPDATE rides SET available_seats = available_seats + seats_booked
+    UPDATE bookings SET status = 'cancelled'
+
+END FUNCTION
+```
+
+**Worked Example:**
+
+```
+Scenario: Departure at 14:00, passenger cancels at 13:45 (15 mins before)
+
+    hours_before = (14:00 - 13:45) / 60 = 0.25 hours
+    0.25 ≤ 0.5 → Tier 3 → penalty = 5
+
+    Result: −5 Trust Points, streak reset to 0.
+    User sees: "Booking cancelled. Late cancellation penalty: −5 Trust Points."
+
+Scenario: Departure at 14:00, passenger cancels at 08:00 (6 hours before)
+
+    hours_before = 6
+    6 > 4 → Tier 1 → penalty = 0
+
+    Result: No penalty. Free cancellation.
+    User sees: "Booking cancelled successfully."
+```
+
+### 8.4 Pattern-Match Report Evaluation Algorithm
+
+**Purpose:** Prevent false accusations by requiring corroboration from multiple independent reporters before applying trust score penalties. Single reports serve only as warnings ("The Shield").
+
+**Algorithm (Pseudocode):**
+
+```
+FUNCTION evaluateReport(reported_user_id, report_reason, ride_id, reporter_id):
+
+    // Step 1: No-Show bypasses the shield entirely
+    IF report_reason == 'no_show' THEN
+        UPDATE users SET trust_score = trust_score - 5,
+                         current_streak = 0
+                     WHERE id = reported_user_id
+        RETURN { action: "IMMEDIATE_PENALTY", points: -5 }
+    END IF
+
+    // Step 2: For conduct reports, check for pattern
+    // Count distinct reporters across distinct rides in the last 30 days
+    recent_reports = SELECT COUNT(DISTINCT reporter_id)
+                     FROM reports
+                     WHERE reported_user_id = ?
+                       AND reporter_id != reporter_id  // exclude current reporter
+                       AND reason IN ('bad_conduct', 'unsafe_driving', 'harassment')
+                       AND created_at >= NOW() - INTERVAL 30 DAY
+
+    // Step 3: Single report → Warning only (The Shield)
+    IF recent_reports == 0 THEN
+        // This is the first/only reporter — issue warning, no deduction
+        INSERT system_warning for reported_user
+        RETURN { action: "WARNING_ONLY", points: 0 }
+    END IF
+
+    // Step 4: 2+ reports from different people → Pattern confirmed
+    IF recent_reports >= 1 THEN  // current report makes it 2+
+        // Deduct for each qualifying report
+        UPDATE users SET trust_score = trust_score - 10,
+                         current_streak = 0
+                     WHERE id = reported_user_id
+        penalty = -10
+    END IF
+
+    // Step 5: Escalation check (3+ pattern-matched reports)
+    total_pattern_reports = recent_reports + 1  // including current
+    IF total_pattern_reports >= 3 THEN
+        UPDATE users SET trust_score = trust_score - 25
+                     WHERE id = reported_user_id
+        penalty = penalty - 25
+    END IF
+
+    RETURN { action: "PATTERN_PENALTY", points: penalty }
+
+END FUNCTION
+```
+
+**Worked Example:**
+
+```
+Case 1 — Single liar:
+    User X reports User Y for "bad_conduct" on Ride #50.
+    No other reports against Y in 30 days.
+    → WARNING_ONLY. Y's trust_score unchanged. Shield protects Y. ✅
+
+Case 2 — Real pattern:
+    User X reports User Y for "bad_conduct" on Ride #50 → Warning only.
+    User Z (different person) reports User Y for "unsafe_driving" on Ride #55.
+    → Pattern confirmed (2 different people, 2 different rides).
+    → −10 Trust Points. Streak reset. Y is notified.
+
+Case 3 — No-Show:
+    User X reports User Y as "no_show" on Ride #60.
+    → Immediate −5 Trust Points. No shield needed — no-show is objective fact.
+```
+
 ---
 
 ## 9. User Interface Requirements
@@ -1309,8 +1577,9 @@ WITH SELECT ... FOR UPDATE:
 | 3 | Post Ride | Authenticated (Driver) | Fill ride form, adjust price slider, submit |
 | 4 | Search / Map | Authenticated (Passenger) | Enter route, view map, browse ride cards |
 | 5 | Booking Details | Authenticated (Passenger) | View fresh ride data, confirm booking |
-| 6 | My Rides | Authenticated | View ride/booking history with statuses |
-| 7 | Profile | Authenticated | View/edit personal information |
+| 6 | Booking Success | Authenticated (Passenger) | Confirmation with WhatsApp and Call native handoff buttons |
+| 7 | My Rides | Authenticated | View ride/booking history with statuses; file reports |
+| 8 | Profile | Authenticated | View/edit personal information; view trust score and current streak |
 
 ### 9.2 Screen Flow
 
@@ -1381,6 +1650,26 @@ WITH SELECT ... FOR UPDATE:
 | **Initial Region** | Centered between origin and destination with appropriate zoom |
 | **Precondition** | Location permission granted AND coordinates loaded (not null) |
 
+#### BookingSuccess Component
+
+| Attribute | Specification |
+|-----------|---------------|
+| **Trigger** | Displayed immediately after a successful `201 Created` response from `POST /api/bookings/new` |
+| **Content** | Confirmation message ("Seat Booked!"), booking summary (ride origin → destination, departure time, seats booked, price paid), and driver's name |
+| **WhatsApp Button** | Actionable link using the WhatsApp API (`https://wa.me/{driver_phone}?text=...`) pre-filled with ride details. Opens the device's WhatsApp app for off-platform coordination. |
+| **Call Button** | Actionable link using the `tel:` URI protocol (`tel:{driver_phone}`) to initiate a native phone call to the driver. |
+| **Rationale** | Since in-app chat is explicitly out of scope, the Native Handoff pattern ensures passengers and drivers can coordinate pickup logistics without requiring RideMates to build a messaging system. |
+| **Fallback** | If the driver has no phone number on file, both buttons SHALL be hidden and a message SHALL display: "Driver has not shared contact details yet." |
+
+#### ReportIncident Component
+
+| Attribute | Specification |
+|-----------|---------------|
+| **Access** | Available on the My Rides / My Bookings screen for completed or no-show rides |
+| **Content** | Reason selector (dropdown: No-Show, Bad Conduct, Unsafe Driving, Harassment), optional free-text description (max 500 chars), and "Submit Report" button |
+| **Confirmation** | After submission, display a confirmation: "Report submitted. Our system will review the pattern." |
+| **Cooldown Indicator** | If the user has filed 3 reports in 24 hours, the button SHALL be disabled with tooltip: "You have reached the daily report limit." |
+
 ---
 
 ## 10. Appendices
@@ -1391,7 +1680,7 @@ WITH SELECT ... FOR UPDATE:
 |------|------------|
 | **Day-Scholar** | A university student who commutes daily from outside the campus |
 | **White Plate Vehicle** | A privately registered vehicle (non-commercial) in India; cannot legally be used for commercial ride-hailing |
-| **Cost-Sharing** | Splitting actual fuel costs among rider and passengers; distinct from commercial fare |
+| **Cost-Sharing** | A model where fuel costs are split and adjusted by a tiered maintenance buffer (1.2x – 1.5x) based on vehicle wear and tear; distinct from commercial fare |
 | **Strike Resilience** | The ability to continue operations during regional transportation disruptions (bus strikes, highway blockades) |
 | **Link Road** | A secondary village road that connects two towns, bypassing the main highway |
 | **Geocoding** | Converting a text place name into GPS coordinates (latitude, longitude) |
@@ -1399,6 +1688,11 @@ WITH SELECT ... FOR UPDATE:
 | **Row-Level Lock** | A database lock on a single table row that prevents other transactions from modifying it until the lock is released |
 | **Idempotent** | An operation that produces the same result whether executed once or multiple times |
 | **Token Refresh** | The process of obtaining a new authentication token when the current one expires |
+| **Trust Score** | A numerical reputation metric (starting at 100) that decreases with verified penalties and increases indirectly via clean ride streaks |
+| **Current Streak** | A counter of consecutive completed rides with no incidents; resets to 0 on any trust penalty |
+| **Pattern-Match Shield** | The rule that a single conduct report triggers only a warning; penalties require corroboration from 2+ independent reporters across different rides |
+| **Clean Ride** | A completed ride with no reports filed within the 12-hour grace period after the driver marks it complete |
+| **Native Handoff** | Redirecting the user to an external app (WhatsApp, Phone Dialer) via a deep link (`wa.me`, `tel:`) for off-platform coordination |
 
 ### 10.2 Appendix B — Error Code Reference
 
@@ -1416,10 +1710,15 @@ WITH SELECT ... FOR UPDATE:
 | 409 | `DUPLICATE_EMAIL` | Email already registered in `users` table | "An account with this email already exists" |
 | 500 | `DB_ERROR` | MySQL query failure | "Something went wrong. Please try again" |
 | 500 | `INTERNAL_ERROR` | Unhandled server error | "Something went wrong. Please try again" |
+| 400 | `CANCELLATION_PENALTY` | Booking cancelled within penalty window | "Booking cancelled. Late cancellation penalty: −{X} Trust Points" |
+| 400 | `REPORT_COOLDOWN` | User has filed 3 reports in 24 hours | "You have reached the daily report limit. Try again tomorrow" |
+| 200 | `REPORT_WARNING_ONLY` | Single conduct report filed (shield applied) | "Report submitted. A system warning has been issued" |
+| 200 | `REPORT_PATTERN_PENALTY` | Pattern-matched conduct reports confirmed | "Report submitted. Pattern detected — trust score adjusted" |
+| 200 | `RIDE_COMPLETION_PROMPT` | 2+ hours after departure, driver prompted | "Is your trip to {destination} finished?" |
 
 ---
 
 *Document: Software Requirements Specification (SRS)*
 *Project: RideMates — University Peer-to-Peer Commute Network*
-*Version: 1.0 | February 2026*
+*Version: 1.2 | February 2026*
 *Standard: IEEE 830-1998*
