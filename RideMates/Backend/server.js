@@ -6,7 +6,7 @@
 //
 // SRS References:
 //   • NFR-REL-02  — Global unhandledRejection / uncaughtException handlers
-//   • NFR-SEC-01  — Firebase token required on all endpoints (except /health)
+//   • NFR-SEC-01  — JWT token required on all protected endpoints
 //   • Section 6   — All API route prefixes defined here
 // =============================================================================
 
@@ -17,7 +17,7 @@ require('dotenv').config();
 // --- Database connection pool (config/db.js) ---
 const pool = require('./config/db');
 
-// --- Firebase Auth middleware ---
+// --- JWT Auth middleware ---
 const { verifyToken } = require('./middleware/auth');
 
 // --- Route files ---
@@ -42,9 +42,10 @@ app.use(express.json());
 // Each route file handles a group of related endpoints.
 // The first argument is the URL prefix, the second is the router.
 //
-//   POST   /api/auth/register       → authRoutes
-//   GET    /api/auth/profile        → authRoutes
-//   PUT    /api/auth/profile        → authRoutes
+//   POST   /api/auth/send-otp       → authRoutes (public — no JWT needed)
+//   POST   /api/auth/verify-otp     → authRoutes (public — no JWT needed)
+//   GET    /api/auth/profile        → authRoutes (needs JWT)
+//   PUT    /api/auth/profile        → authRoutes (needs JWT)
 //   POST   /api/rides/create        → rideRoutes
 //   GET    /api/rides/search        → rideRoutes
 //   GET    /api/rides/:id           → rideRoutes
@@ -113,29 +114,45 @@ const THIRTY_MINUTES = 30 * 60 * 1000; // in milliseconds
 // lingering forever.
 // ---------------------------------------------------------------------------
 async function autoCompleteStaleRides() {
+  const conn = await pool.getConnection();
   try {
-    const [result] = await pool.query(
-      `UPDATE rides
-       SET status = 'completed', completed_at = NOW()
+    await conn.beginTransaction();
+
+    // Step 1: Find stale active rides (still active 24h after departure)
+    const [staleRides] = await conn.query(
+      `SELECT id FROM rides
        WHERE status = 'active'
          AND departure_time < NOW() - INTERVAL 24 HOUR`
     );
 
-    if (result.affectedRows > 0) {
-      console.log(`⏰ Auto-completed ${result.affectedRows} stale ride(s).`);
+    if (staleRides.length > 0) {
+      const rideIds = staleRides.map(r => r.id);
 
-      // Also transition their confirmed bookings to 'completed'
-      await pool.query(
-        `UPDATE bookings b
-         JOIN rides r ON b.ride_id = r.id
-         SET b.status = 'completed'
-         WHERE r.status = 'completed'
-           AND b.status = 'confirmed'
-           AND r.completed_at >= NOW() - INTERVAL 1 MINUTE`
+      // Step 2: Mark those rides as completed
+      await conn.query(
+        `UPDATE rides SET status = 'completed', completed_at = NOW()
+         WHERE id IN (?)`,
+        [rideIds]
       );
+
+      // Step 3: Transition their confirmed bookings to completed
+      await conn.query(
+        `UPDATE bookings
+         SET status = 'completed'
+         WHERE ride_id IN (?)
+           AND status = 'confirmed'`,
+        [rideIds]
+      );
+
+      console.log(`⏰ Auto-completed ${rideIds.length} stale ride(s) and their bookings.`);
     }
+
+    await conn.commit();
   } catch (error) {
+    await conn.rollback();
     console.error('Error in autoCompleteStaleRides:', error.message);
+  } finally {
+    conn.release();
   }
 }
 

@@ -22,6 +22,7 @@
 | 1.1 | February 28, 2026 | Project Team | Added Trust System fields to schema, hybrid geocoding model, Instant Booking Trust Contract, Report Module for mutual accountability, and Post-Booking Native Handoff UI |
 | 1.2 | February 28, 2026 | Project Team | v2.1 Blueprint: Ride Lifecycle completion trigger, tiered passenger cancellation penalties, pattern-match reporting shield (single report = warning only), schema additions (current_streak, bookings.is_reported, rides.completed_at) |
 | 1.3 | February 28, 2026 | Project Team | Tiered Pricing: vehicle-specific maintenance multipliers (bike/scooter 1.2x, auto 1.35x, car 1.5x), vehicle_type ENUM expanded to include 'scooter', Section 8.1 algorithm reworked with multi-vehicle worked examples |
+| 1.4 | March 1, 2026 | Project Team | OTP-only authentication: Backend-generated 6-digit OTPs with SMTP delivery replacing Firebase OTP; JWT session tokens issued by backend; removed password-based auth; added `user_otps` table, `send-otp` / `verify-otp` endpoints, OTP Handshake Algorithm (Section 8.5), rate limiting, brute-force protection |
 
 ---
 
@@ -72,6 +73,7 @@
    - 8.2 [Concurrency Control — Booking Transaction](#82-concurrency-control--booking-transaction)
    - 8.3 [Trust Score & Cancellation Penalty Algorithm](#83-trust-score--cancellation-penalty-algorithm)
    - 8.4 [Pattern-Match Report Evaluation Algorithm](#84-pattern-match-report-evaluation-algorithm)
+   - 8.5 [OTP Handshake Algorithm](#85-otp-handshake-algorithm)
 9. [User Interface Requirements](#9-user-interface-requirements)
    - 9.1 [Screen Inventory](#91-screen-inventory)
    - 9.2 [Screen Flow](#92-screen-flow)
@@ -192,23 +194,27 @@ RideMates is a **new, self-contained product** — it is not a replacement or ex
 
 The system also depends on two external services:
 
-- **Firebase Auth** — for OTP-based email authentication and token management.
+- **SMTP Email Gateway** — for delivering backend-generated OTP codes to the user's university email. The backend is the primary logic provider for generating, storing, and verifying OTPs; the SMTP service (e.g., Nodemailer with Gmail/SendGrid) acts solely as the email delivery mechanism.
 - **Mapbox API** — for geocoding (city name → coordinates) and route computation.
 
 **Context Diagram:**
 
 ```
                     ┌─────────────────────┐
-                    │   Firebase Auth     │
-                    │  (Email OTP +       │
-                    │   Token Issuer)     │
+                    │  SMTP Email Gateway │
+                    │  (OTP Email         │
+                    │   Delivery Only)    │
                     └────────┬────────────┘
                              │
 ┌──────────────┐    ┌────────┴────────┐    ┌──────────────────┐
 │   User's     │◄──►│   RideMates    │◄──►│  MySQL Database  │
 │   Mobile     │    │   Backend API   │    │  (Aiven Cloud)   │
 │   Device     │    │  (Node/Express) │    │                  │
-│  (Expo App)  │    └────────┬────────┘    └──────────────────┘
+│  (Expo App)  │    │                 │    │  • users         │
+│              │    │  • OTP Generate │    │  • user_otps     │
+│              │    │  • OTP Verify   │    │  • rides         │
+│              │    │  • JWT Issue    │    │  • bookings      │
+│              │    └────────┬────────┘    └──────────────────┘
 └──────┬───────┘             │
        │            ┌────────┴────────┐
        └───────────►│   Mapbox API    │
@@ -289,7 +295,7 @@ The system supports two user roles. A single registered user can operate in **bo
 | **University Email Only** | Registration restricted to `@lpu.in` email domain | Core safety feature; eliminates unverified users |
 | **Tiered Price Cap** | The driver-set price is restricted by a maintenance multiplier specific to the vehicle type (Bike/Scooter: 1.2x, Auto: 1.35x, Car: 1.5x) to ensure legal non-commercial compliance | Legal compliance with India's Motor Vehicles Act (White Plate regulations) |
 | **No Profit** | System is designed for cost-sharing only, not commercial ride-hailing | Regulatory requirement for non-commercial vehicles |
-| **Token Expiry** | Firebase ID Tokens expire every 60 minutes; must be refreshed before each API call | Firebase security architecture |
+| **JWT Session Tokens** | Backend-issued JWTs expire every 7 days; the frontend stores the token securely and attaches it to every API request | Stateless session management without Firebase dependency |
 | **Timezone Handling** | All datetime values must be stored in UTC (ISO 8601) and converted to local time on display | Prevents IST/UTC mismatch between phone and Aiven MySQL server |
 | **Separate Codebases** | Backend and Frontend must reside in completely separate directories | Clean separation of concerns; independent deployment |
 | **No Secrets in Frontend** | MySQL credentials, Firebase Admin keys must NEVER appear in React Native code | APK files are extractable; secrets would be exposed |
@@ -303,7 +309,7 @@ The system supports two user roles. A single registered user can operate in **bo
 | A1 | Users have a valid, active university email address (`@lpu.in`) |
 | A2 | Users have a smartphone with GPS capability and an active internet connection |
 | A3 | The Aiven MySQL database maintains 99.9% uptime |
-| A4 | Firebase Auth service is available and operational |
+| A4 | The configured SMTP email service (Gmail/SendGrid) is available and operational for OTP delivery |
 | A5 | Mapbox API free tier quota (100,000 requests/month) is sufficient for project scale |
 | A6 | Cash-based settlement is acceptable between driver and passengers (no in-app payment) |
 | A7 | User's phone has the Expo Go app installed (for development builds) |
@@ -312,7 +318,7 @@ The system supports two user roles. A single registered user can operate in **bo
 
 | # | Dependency | Impact if Unavailable |
 |---|------------|----------------------|
-| D1 | Firebase Auth | Users cannot register or login; all API calls fail (401) |
+| D1 | SMTP Email Gateway | OTP emails cannot be delivered; users cannot register or login (they can retry once the service recovers) |
 | D2 | Aiven MySQL | All read/write operations fail; app shows error states |
 | D3 | Mapbox Geocoding API | Fallback geocoding fails for cities not in the local JSON dataset; core regional hubs remain functional via offline data |
 | D4 | Mapbox Directions API | Route polyline cannot be computed or displayed |
@@ -339,7 +345,7 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 │        └──────────────┴──────────────┴────────────────┴─────────────┘      │
 │                                    │                                        │
 │                          Axios HTTP Client                                  │
-│                     + Firebase Token Interceptor                            │
+│                       + JWT Token Interceptor                               │
 └────────────────────────────────────┬────────────────────────────────────────┘
                                      │ REST API (HTTPS / JSON)
 ┌────────────────────────────────────┴────────────────────────────────────────┐
@@ -347,14 +353,16 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 │                      Node.js + Express.js Server                            │
 │                                                                             │
 │   ┌─────────────────────┐                                                   │
-│   │  Auth Middleware     │  (Verifies Firebase Token on every request)       │
+│   │  Auth Middleware     │  (Verifies Backend-issued JWT on every request)   │
 │   └─────────┬───────────┘                                                   │
 │             │                                                               │
 │   ┌─────────┴──────────┐  ┌────────────────┐  ┌──────────────────────┐     │
 │   │  Auth Controller   │  │ Ride Controller│  │ Booking Controller   │     │
-│   │  • Domain check    │  │ • Price calc   │  │ • BEGIN TRANSACTION  │     │
-│   │  • Register user   │  │ • CRUD rides   │  │ • SELECT...FOR UPDATE│     │
-│   │  • Get profile     │  │ • Search       │  │ • Seat decrement     │     │
+│   │  • Send OTP        │  │ • Price calc   │  │ • BEGIN TRANSACTION  │     │
+│   │  • Verify OTP      │  │ • CRUD rides   │  │ • SELECT...FOR UPDATE│     │
+│   │  • Register user   │  │ • Search       │  │ • Seat decrement     │     │
+│   │  • Issue JWT       │  │                │  │                      │     │
+│   │  • Get profile     │  │                │  │                      │     │
 │   └────────────────────┘  └────────────────┘  └──────────────────────┘     │
 │                                                                             │
 │   ┌──────────────────────────────┐                                          │
@@ -379,10 +387,10 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 
                          EXTERNAL SERVICES
           ┌──────────────────┐    ┌──────────────────────┐
-          │  Firebase Auth   │    │  Mapbox API          │
-          │  • Email OTP     │    │  • Geocoding         │
-          │  • Token issue   │    │  • Directions        │
-          │  • Token verify  │    │  • Polyline routes   │
+          │  SMTP Gateway    │    │  Mapbox API          │
+          │  • Email delivery│    │  • Geocoding         │
+          │  (OTP codes)     │    │  • Directions        │
+          │                  │    │  • Polyline routes   │
           └──────────────────┘    └──────────────────────┘
 ```
 
@@ -393,7 +401,7 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 | Frontend | React Native (Expo) | SDK 51+ | Single codebase for Android/iOS; managed workflow with OTA updates |
 | Backend | Node.js + Express.js | 18.x LTS + 4.x | Non-blocking I/O for concurrent requests; JavaScript full-stack |
 | Database | MySQL (InnoDB) | 8.0 | ACID-compliant; supports transactions with row-level locking for concurrent booking |
-| Authentication | Firebase Auth | Latest | Managed email OTP; short-lived tokens (60-min); domain restriction |
+| Authentication | Backend OTP + JWT | Custom | Server-generated 6-digit OTPs delivered via SMTP; backend-issued JWTs (7-day expiry) for session management |
 | Maps — Geocoding | Local JSON + Mapbox Geocoding API (fallback) | v5 | Resolves regional hub coordinates offline; falls back to Mapbox for unknown cities |
 | Maps — Routing | Mapbox Directions API | v5 | Computes driving route with polyline geometry |
 | Device Location | expo-location | Latest | Native GPS access with permission management |
@@ -438,13 +446,16 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 
 | ID | Requirement | Priority | Description |
 |----|------------|----------|-------------|
-| FR-AUTH-01 | Domain Validation | Critical | The system SHALL reject any registration attempt with an email not ending in `@lpu.in`. |
-| FR-AUTH-02 | Email OTP | Critical | The system SHALL send an OTP to the user's university email via Firebase Auth for verification. |
-| FR-AUTH-03 | User Registration | Critical | Upon successful Firebase verification, the system SHALL create a corresponding user record in MySQL with `firebase_uid`, `full_name`, `email`, `phone`, and `role`. |
-| FR-AUTH-04 | Token-Based Auth | Critical | All protected API endpoints SHALL require a valid Firebase ID Token in the `Authorization: Bearer <token>` header. |
-| FR-AUTH-05 | Token Auto-Refresh | High | The frontend SHALL call `getIdToken(false)` before every API request to handle the 60-minute token expiry transparently. |
+| FR-AUTH-01 | Domain Validation | Critical | The system SHALL reject any OTP request or registration attempt with an email not ending in `@lpu.in`. |
+| FR-AUTH-02 | OTP Generation | Critical | The system SHALL generate a cryptographically secure 6-digit numeric OTP on the backend server and deliver it to the user's university email via an SMTP gateway (e.g., Nodemailer). |
+| FR-AUTH-03 | User Registration | Critical | Upon successful OTP verification, the system SHALL create a user record in MySQL with `full_name`, `email`, `phone`, and `role`, and return a signed JWT session token. |
+| FR-AUTH-04 | Token-Based Auth | Critical | All protected API endpoints SHALL require a valid backend-issued JWT in the `Authorization: Bearer <token>` header. |
+| FR-AUTH-05 | Token Handling | High | The frontend SHALL store the JWT securely (e.g., `expo-secure-store`) and attach it to every API request via an Axios interceptor. JWTs expire after 7 days; upon expiry the user is redirected to the login screen to re-verify via OTP. |
 | FR-AUTH-06 | Profile Retrieval | Medium | The system SHALL allow authenticated users to retrieve their profile via `GET /api/auth/profile`. |
 | FR-AUTH-07 | Profile Update | Medium | The system SHALL allow authenticated users to update their `full_name`, `phone`, and `profile_photo` via `PUT /api/auth/profile`. |
+| FR-AUTH-08 | OTP Expiry | Critical | The system SHALL invalidate generated OTPs after 10 minutes of issuance. Any verification attempt with an expired OTP SHALL return a `400` error with message "OTP has expired. Please request a new one." |
+| FR-AUTH-09 | OTP Rate Limiting | High | The system SHALL restrict a single email address to a maximum of 3 OTP requests per 10-minute window to prevent SMTP abuse. Exceeding this limit SHALL return a `429` error. |
+| FR-AUTH-10 | Brute Force Protection | High | The system SHALL lock OTP verification for an email address after 3 consecutive failed OTP attempts. The lockout SHALL persist until the OTP expires (10 minutes) or a new OTP is requested. |
 
 #### 4.1.2 Ride Management Module
 
@@ -523,7 +534,7 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 
 | Interface | Description |
 |-----------|-------------|
-| **Login Screen** | Email input field, password field, "Register" and "Login" buttons. Domain validation message on invalid email. |
+| **Login / Signup Screen** | Two-phase screen. **Phase 1:** University email input only with "Continue" button and domain validation. **Phase 2:** 6-digit numeric OTP input field with auto-submit on completion and a "Resend Code" timer (60-second cooldown). No password fields. |
 | **Home Screen** | Dashboard with two primary actions: "Post a Ride" and "Find a Ride." Displays recent activity summary. |
 | **Post Ride Screen** | Form with city inputs (origin/destination), date/time picker, seat count, vehicle details, price slider with visual cap indicator, emergency route toggle, women-only toggle, and Instant Booking toggle with Trust Contract acknowledgment checkbox. |
 | **Search/Map Screen** | Origin and destination input fields with autocomplete. Interactive map displaying the route polyline. List of matching rides below the map as scrollable cards. |
@@ -543,7 +554,7 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 
 | External System | Interface Type | Protocol | Data Format |
 |----------------|---------------|----------|-------------|
-| Firebase Auth | SDK + REST | HTTPS | JSON (ID Token, User object) |
+| SMTP Email Gateway | SMTP (Nodemailer) | SMTP/TLS | Email with 6-digit OTP code in body |
 | Mapbox Geocoding API | REST | HTTPS | JSON (GeoJSON features) |
 | Mapbox Directions API | REST | HTTPS | JSON (GeoJSON geometry + route metadata) |
 | Aiven MySQL | TCP | mysql2 driver (SSL) | SQL queries / result sets |
@@ -552,9 +563,9 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 
 | Interface | Protocol | Details |
 |-----------|----------|---------|
-| Frontend ↔ Backend | HTTP/HTTPS | RESTful JSON API; `Authorization: Bearer <Firebase ID Token>` header |
+| Frontend ↔ Backend | HTTP/HTTPS | RESTful JSON API; `Authorization: Bearer <JWT>` header |
 | Backend ↔ MySQL | TCP (SSL) | mysql2 connection pool; max 10 connections; query parameterization |
-| Frontend ↔ Firebase | HTTPS | Firebase SDK handles token lifecycle transparently |
+| Backend ↔ SMTP Gateway | SMTP/TLS | Nodemailer sends OTP emails via configured SMTP provider |
 | Frontend ↔ Mapbox | HTTPS | Direct API calls with `access_token` query parameter |
 
 ### 4.3 Non-Functional Requirements
@@ -573,8 +584,8 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 
 | ID | Requirement |
 |----|------------|
-| NFR-SEC-01 | All API endpoints (except health check) SHALL require Firebase token authentication. |
-| NFR-SEC-02 | Firebase ID Tokens SHALL be verified server-side using Firebase Admin SDK. |
+| NFR-SEC-01 | All API endpoints (except health check, `send-otp`, and `verify-otp`) SHALL require JWT authentication. |
+| NFR-SEC-02 | JWTs SHALL be verified server-side using a secret key stored in the backend `.env` file. OTPs SHALL be hashed before storage in the `user_otps` table. |
 | NFR-SEC-03 | MySQL credentials, Firebase Admin keys, and any server-side secrets SHALL be stored exclusively in the backend `.env` file and NEVER in frontend code. |
 | NFR-SEC-04 | Frontend environment variables SHALL only contain public keys (Mapbox public token, Firebase App ID) and MUST use the `EXPO_PUBLIC_` prefix. |
 | NFR-SEC-05 | Database connections SHALL use SSL/TLS encryption. |
@@ -629,7 +640,6 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | `id` | INT | PRIMARY KEY, AUTO_INCREMENT | Unique user identifier |
-| `firebase_uid` | VARCHAR(128) | NOT NULL, UNIQUE | Firebase Authentication UID |
 | `full_name` | VARCHAR(100) | NOT NULL | User's full name |
 | `email` | VARCHAR(100) | NOT NULL, UNIQUE | University email address |
 | `phone` | VARCHAR(15) | NULLABLE | Phone number |
@@ -643,6 +653,18 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 | `updated_at` | TIMESTAMP | ON UPDATE CURRENT_TIMESTAMP | Last update timestamp |
 
 > **Trust System Note:** New users start with `trust_score = 100` and `current_streak = 0`. A single conduct report triggers only a warning (the "Shield"). Point deductions (−10 per report) occur only when 2+ reports from different people across different rides establish a pattern. No-Show reports bypass the shield and immediately deduct −5 points. Three pattern-matched reports in 30 days triggers an escalated penalty (−25 additional). The streak resets on any penalty and increments on clean ride completions (12-hour grace period after ride completion).
+
+#### Table: `user_otps`
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `email` | VARCHAR(100) | PRIMARY KEY | The university email address the OTP was sent to |
+| `otp_code` | VARCHAR(255) | NOT NULL | The hashed 6-digit OTP code (bcrypt or SHA-256) |
+| `expires_at` | TIMESTAMP | NOT NULL | Expiry timestamp; OTP is invalid after this time (10 minutes from issuance) |
+| `attempts` | INT | NOT NULL, DEFAULT 0 | Number of failed verification attempts; locks at 3 |
+| `created_at` | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | When the OTP was generated |
+
+> **Data Hygiene Note:** Upon successful OTP verification (code match + not expired + attempts < 3), the corresponding row SHALL be deleted from `user_otps` immediately. This prevents replay attacks and keeps the table lean. Expired records may also be cleaned by a periodic cron job or on the next request for that email.
 
 #### Table: `rides`
 
@@ -717,7 +739,7 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 
 | Data Element | Format | Valid Range | Source |
 |-------------|--------|-------------|--------|
-| Email | string | Must match `*@lpu.in` pattern | User input → Firebase → Backend |
+| Email | string | Must match `*@lpu.in` pattern | User input → Backend OTP → MySQL |
 | Latitude | DECIMAL(10,7) | -90.0000000 to +90.0000000 | Mapbox Geocoding API |
 | Longitude | DECIMAL(10,7) | -180.0000000 to +180.0000000 | Mapbox Geocoding API |
 | Distance (km) | DECIMAL(6,2) | 0.01 to 9999.99 | Mapbox Directions API |
@@ -728,8 +750,8 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 | Price | DECIMAL(8,2) | 0.01 to 999999.99 (₹) | Calculated by pricing algorithm |
 | **Trust Score** | INT | 0 to 100 (practical), no hard lower bound | Derived from reports and cancellation penalties |
 | **Current Streak** | INT | 0+ | Incremented on clean ride completions; reset on any penalty |
-| Firebase UID | VARCHAR(128) | Alphanumeric, up to 128 chars | Firebase Auth |
-| Firebase ID Token | string (JWT) | ~1000 chars; expires every 60 min | Firebase SDK |
+| OTP Code | VARCHAR(255) | 6-digit numeric (hashed in DB) | Backend-generated (crypto.randomInt) |
+| JWT Session Token | string (JWT) | ~300–500 chars; expires every 7 days | Backend-issued (jsonwebtoken library) |
 
 ### 5.3 Entity-Relationship Diagram
 
@@ -738,7 +760,6 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 │        USERS           │
 ├────────────────────────┤
 │ PK  id                 │
-│     firebase_uid (UQ)  │
 │     full_name          │
 │     email (UQ)         │         ┌────────────────────────┐
 │     phone              │         │        RIDES           │
@@ -829,23 +850,45 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 
 ### 6.1 Authentication Endpoints
 
+#### `POST /api/auth/send-otp`
+
+| Attribute | Value |
+|-----------|-------|
+| **Description** | Validate the email domain and send a 6-digit OTP to the user's university email |
+| **Auth** | None (public endpoint) |
+| **Request Body** | `{ email }` |
+| **Success** | `200 OK` — `{ success: true, message: "OTP sent to your email" }` |
+| **Error 400** | Email domain is not `@lpu.in` |
+| **Error 429** | Rate limit exceeded (3 OTP requests per 10-minute window) |
+
+#### `POST /api/auth/verify-otp`
+
+| Attribute | Value |
+|-----------|-------|
+| **Description** | Verify the OTP code against the stored hash; if valid, check if user exists — return JWT for existing users or a `registration_token` for new users |
+| **Auth** | None (public endpoint) |
+| **Request Body** | `{ email, otp_code }` |
+| **Success (existing user)** | `200 OK` — `{ success: true, data: { token (JWT), user: { id, full_name, email } } }` |
+| **Success (new user)** | `200 OK` — `{ success: true, data: { registration_token, is_new_user: true } }` |
+| **Error 400** | OTP code is incorrect, expired, or account is locked due to too many failed attempts |
+
 #### `POST /api/auth/register`
 
 | Attribute | Value |
 |-----------|-------|
-| **Description** | Register a new user after successful Firebase OTP verification |
-| **Auth** | Firebase ID Token (Bearer) |
-| **Request Body** | `{ firebase_uid, full_name, email, phone, role }` |
-| **Success** | `201 Created` — `{ success: true, data: { id, firebase_uid, full_name, email } }` |
-| **Error 400** | Email domain is not `@lpu.in` |
-| **Error 409** | Email or firebase_uid already registered |
+| **Description** | Register a new user after successful OTP verification |
+| **Auth** | Registration token (from `verify-otp` response) |
+| **Request Body** | `{ full_name, email, phone, role }` |
+| **Success** | `201 Created` — `{ success: true, data: { token (JWT), user: { id, full_name, email } } }` |
+| **Error 400** | Missing required fields or invalid registration token |
+| **Error 409** | Email already registered |
 
 #### `GET /api/auth/profile`
 
 | Attribute | Value |
 |-----------|-------|
 | **Description** | Get the authenticated user's profile |
-| **Auth** | Firebase ID Token (Bearer) |
+| **Auth** | JWT (Bearer) |
 | **Success** | `200 OK` — `{ success: true, data: { id, full_name, email, phone, role, university } }` |
 | **Error 404** | User not found in MySQL |
 
@@ -854,7 +897,7 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 | Attribute | Value |
 |-----------|-------|
 | **Description** | Update the authenticated user's profile |
-| **Auth** | Firebase ID Token (Bearer) |
+| **Auth** | JWT (Bearer) |
 | **Request Body** | `{ full_name?, phone?, profile_photo? }` |
 | **Success** | `200 OK` — `{ success: true, message: "Profile updated" }` |
 
@@ -865,7 +908,7 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 | Attribute | Value |
 |-----------|-------|
 | **Description** | Post a new ride with auto-calculated capped pricing |
-| **Auth** | Firebase ID Token (Bearer) |
+| **Auth** | JWT (Bearer) |
 | **Request Body** | `{ origin_city, origin_lat, origin_lng, destination_city, dest_lat, dest_lng, distance_km, departure_time (ISO 8601 UTC), available_seats, vehicle_type, vehicle_mileage, fuel_type, driver_set_price, is_emergency_route? }` |
 | **Success** | `201 Created` — `{ success: true, data: { ride_id, base_price, capped_price, max_allowed, per_seat_price } }` |
 
@@ -874,7 +917,7 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 | Attribute | Value |
 |-----------|-------|
 | **Description** | Search for available rides matching origin and destination |
-| **Auth** | Firebase ID Token (Bearer) |
+| **Auth** | JWT (Bearer) |
 | **Query Params** | `origin` (required), `destination` (required), `date` (optional, YYYY-MM-DD), `emergency_only` (optional, boolean) |
 | **Success** | `200 OK` — `{ success: true, data: [ ...rides ] }` |
 
@@ -883,7 +926,7 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 | Attribute | Value |
 |-----------|-------|
 | **Description** | Get full details of a specific ride |
-| **Auth** | Firebase ID Token (Bearer) |
+| **Auth** | JWT (Bearer) |
 | **Success** | `200 OK` — `{ success: true, data: { ...ride, driver: { name, email } } }` |
 | **Error 404** | Ride not found |
 
@@ -892,7 +935,7 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 | Attribute | Value |
 |-----------|-------|
 | **Description** | Update a ride (driver only) |
-| **Auth** | Firebase ID Token (Bearer) |
+| **Auth** | JWT (Bearer) |
 | **Success** | `200 OK` |
 | **Error 403** | Authenticated user is not the ride's driver |
 
@@ -901,7 +944,7 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 | Attribute | Value |
 |-----------|-------|
 | **Description** | Cancel a ride by setting status to 'cancelled' |
-| **Auth** | Firebase ID Token (Bearer) |
+| **Auth** | JWT (Bearer) |
 | **Success** | `200 OK` — `{ success: true, message: "Ride cancelled" }` |
 | **Error 403** | Authenticated user is not the ride's driver |
 
@@ -912,7 +955,7 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 | Attribute | Value |
 |-----------|-------|
 | **Description** | Book seat(s) on a ride (uses SQL transaction with row-level locking) |
-| **Auth** | Firebase ID Token (Bearer) |
+| **Auth** | JWT (Bearer) |
 | **Request Body** | `{ ride_id, seats_booked }` |
 | **Success** | `201 Created` — `{ success: true, data: { booking_id, ride_id, seats_booked, price_paid, remaining_seats } }` |
 | **Error 400** | Not enough seats available |
@@ -924,7 +967,7 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 | Attribute | Value |
 |-----------|-------|
 | **Description** | Get all bookings for the authenticated user |
-| **Auth** | Firebase ID Token (Bearer) |
+| **Auth** | JWT (Bearer) |
 | **Success** | `200 OK` — `{ success: true, data: [ ...bookings ] }` |
 
 #### `PUT /api/bookings/:id/cancel`
@@ -932,7 +975,7 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 | Attribute | Value |
 |-----------|-------|
 | **Description** | Cancel a booking and restore available seats |
-| **Auth** | Firebase ID Token (Bearer) |
+| **Auth** | JWT (Bearer) |
 | **Success** | `200 OK` — `{ success: true, message: "Booking cancelled" }` |
 | **Error 403** | Authenticated user is not the booking's passenger |
 
@@ -996,9 +1039,9 @@ All error responses follow a consistent JSON structure:
 |-----------|-------------|
 | **Actor** | Unregistered University Member |
 | **Precondition** | User has a valid `@lpu.in` email address |
-| **Main Flow** | 1. User enters email → 2. System validates domain → 3. Firebase sends OTP → 4. User enters OTP → 5. Firebase verifies → 6. Backend creates MySQL record |
-| **Alternate Flow** | 2a. Email not `@lpu.in` → Error displayed, registration blocked |
-| **Postcondition** | User record exists in MySQL with `firebase_uid` linked |
+| **Main Flow** | 1. User enters email → 2. System validates @lpu.in domain → 3. Backend generates 6-digit OTP and sends via SMTP → 4. User enters OTP → 5. Backend verifies OTP against `user_otps` table → 6. If new user: user enters full name → 7. Backend creates MySQL record and issues JWT session token |
+| **Alternate Flow** | 2a. Email not `@lpu.in` → Error displayed, registration blocked • 4a. OTP expired → Error displayed, user can resend • 4b. 3 failed attempts → Verification locked until OTP expires |
+| **Postcondition** | User record exists in MySQL; JWT issued for authenticated session |
 
 **UC-02: Post Ride**
 
@@ -1564,6 +1607,100 @@ Case 3 — No-Show:
     → Immediate −5 Trust Points. No shield needed — no-show is objective fact.
 ```
 
+### 8.5 OTP Handshake Algorithm
+
+**Purpose:** Authenticate university students via a one-time password sent to their `@lpu.in` email, eliminating third-party identity providers.
+
+#### 8.5.1 Send-OTP Flow
+
+```
+INPUT  → { email }
+OUTPUT → 200 OK  { message: "OTP sent" }
+       → 400     { error: "INVALID_EMAIL_DOMAIN" }
+       → 429     { error: "OTP_RATE_LIMIT" }
+
+STEPS:
+1. Validate email ends with "@lpu.in".
+   IF NOT → return 400 INVALID_EMAIL_DOMAIN.
+
+2. Check `user_otps` for any row WHERE email = input
+   AND created_at > NOW() − 60 seconds.
+   IF EXISTS → return 429 OTP_RATE_LIMIT ("Please wait before requesting a new code").
+
+3. Generate a cryptographically random 6-digit numeric code:
+   otp_plain = crypto.randomInt(100000, 999999)
+
+4. Hash the OTP for storage:
+   otp_hash = SHA-256(otp_plain)
+
+5. UPSERT into `user_otps`:
+   INSERT INTO user_otps (email, otp_hash, expires_at, attempts)
+   VALUES (email, otp_hash, NOW() + 10 MINUTES, 0)
+   ON DUPLICATE KEY UPDATE
+     otp_hash = otp_hash, expires_at = NOW() + 10 MINUTES, attempts = 0;
+
+6. Send email via SMTP (Nodemailer):
+   TO:      email
+   SUBJECT: "RideMates — Your Verification Code"
+   BODY:    "Your OTP is: {otp_plain}. It expires in 10 minutes."
+
+7. Return 200 { message: "OTP sent to your university email" }.
+```
+
+#### 8.5.2 Verify-OTP Flow
+
+```
+INPUT  → { email, otp }
+OUTPUT → 200 OK  { token: "<JWT>", isNewUser: true|false }
+       → 400     { error: "OTP_EXPIRED" | "OTP_INVALID" | "OTP_LOCKED" }
+
+STEPS:
+1. Look up `user_otps` WHERE email = input.
+   IF NOT FOUND → return 400 OTP_INVALID.
+
+2. Check expires_at.
+   IF NOW() > expires_at → DELETE row, return 400 OTP_EXPIRED.
+
+3. Check attempts count.
+   IF attempts >= 3 → return 400 OTP_LOCKED
+      ("Too many failed attempts. Request a new code.").
+
+4. Hash the submitted OTP:
+   input_hash = SHA-256(otp)
+
+5. Compare input_hash with stored otp_hash.
+   IF NO MATCH:
+     INCREMENT attempts by 1.
+     Return 400 OTP_INVALID ("Incorrect code. {3 − attempts} attempts remaining.").
+
+6. OTP matches:
+   a. DELETE the row from `user_otps` (single-use).
+   b. Look up `users` WHERE email = input.
+      IF NOT FOUND → isNewUser = true.
+      IF FOUND     → isNewUser = false.
+   c. Issue JWT:
+      payload = { email, iat, exp: NOW() + 7 DAYS }
+      token   = jwt.sign(payload, process.env.JWT_SECRET)
+   d. Return 200 { token, isNewUser }.
+```
+
+**Worked Example:**
+
+```
+Scenario 1 — Happy path:
+    User enters sam@lpu.in → Backend generates 482917 → sends email.
+    User enters 482917 → hash matches → JWT issued → user proceeds to register/home.
+
+Scenario 2 — Wrong code:
+    User enters 000000 → hash mismatch → attempts = 1 → "Incorrect code. 2 attempts remaining."
+    User enters 111111 → hash mismatch → attempts = 2 → "Incorrect code. 1 attempt remaining."
+    User enters 222222 → attempts = 3 → OTP_LOCKED → must request new code.
+
+Scenario 3 — Expired OTP:
+    User waits 11 minutes → enters correct code → expires_at passed → OTP_EXPIRED.
+    User requests new OTP → fresh 10-minute window starts.
+```
+
 ---
 
 ## 9. User Interface Requirements
@@ -1572,7 +1709,7 @@ Case 3 — No-Show:
 
 | # | Screen | Access | Primary Action |
 |---|--------|--------|----------------|
-| 1 | Login / Register | Unauthenticated | Enter university email, OTP verification |
+| 1 | Login / Signup | Unauthenticated | Phase 1: Enter university email. Phase 2: Enter 6-digit OTP. Phase 3 (new users only): Enter full name to complete registration |
 | 2 | Home Dashboard | Authenticated | Choose "Post a Ride" or "Find a Ride" |
 | 3 | Post Ride | Authenticated (Driver) | Fill ride form, adjust price slider, submit |
 | 4 | Search / Map | Authenticated (Passenger) | Enter route, view map, browse ride cards |
@@ -1620,6 +1757,17 @@ Case 3 — No-Show:
 ```
 
 ### 9.3 UI Component Specifications
+
+#### LoginScreen Component
+
+| Attribute | Specification |
+|-----------|---------------|
+| **Phase 1 — Email Entry** | Single input field for university email (`@lpu.in`), "Send OTP" button. No password field. |
+| **Phase 2 — OTP Verification** | 6-digit numeric input (auto-focus, keyboard type `number-pad`), "Verify" button, "Resend Code" link (disabled for 60 seconds with countdown timer). |
+| **Validation** | Client-side: email must end with `@lpu.in`. Server-side: all OTP logic handled by backend. |
+| **Error States** | Inline error messages for: invalid domain, rate limit (60s wait), wrong code (attempts remaining), expired code, locked out. |
+| **Success Transition** | If `isNewUser = true` → navigate to Registration form. If `isNewUser = false` → navigate to Home screen. |
+| **Rationale** | Password-less OTP flow eliminates credential management overhead and leverages university email as the sole identity proof. |
 
 #### RideCard Component
 
@@ -1693,6 +1841,9 @@ Case 3 — No-Show:
 | **Pattern-Match Shield** | The rule that a single conduct report triggers only a warning; penalties require corroboration from 2+ independent reporters across different rides |
 | **Clean Ride** | A completed ride with no reports filed within the 12-hour grace period after the driver marks it complete |
 | **Native Handoff** | Redirecting the user to an external app (WhatsApp, Phone Dialer) via a deep link (`wa.me`, `tel:`) for off-platform coordination |
+| **JWT (JSON Web Token)** | A compact, URL-safe token issued by the backend after successful OTP verification; used as a Bearer token in all authenticated API requests. Expires after 7 days. |
+| **SMTP (Simple Mail Transfer Protocol)** | The protocol used by the Node.js backend (via Nodemailer) to send OTP verification emails to university addresses |
+| **OTP (One-Time Password)** | A 6-digit numeric code generated by the backend, sent via SMTP, and valid for a single verification attempt within a 10-minute window |
 
 ### 10.2 Appendix B — Error Code Reference
 
@@ -1703,9 +1854,9 @@ Case 3 — No-Show:
 | 400 | `INSUFFICIENT_SEATS` | `seats_booked > available_seats` | "Not enough seats available. Requested: X, Available: Y" |
 | 400 | `PRICE_EXCEEDS_CAP` | Driver price > max cap (will be auto-corrected) | "Price has been adjusted to the maximum allowed" |
 | 401 | `NO_TOKEN` | `Authorization` header missing | "Please log in to continue" |
-| 401 | `INVALID_TOKEN` | Firebase token invalid, malformed, or expired | "Session expired. Please log in again" |
+| 401 | `INVALID_TOKEN` | JWT invalid, malformed, or expired | "Session expired. Please log in again" |
 | 404 | `RIDE_NOT_FOUND` | `ride_id` does not exist in database | "This ride is no longer available" |
-| 404 | `USER_NOT_FOUND` | `firebase_uid` has no corresponding MySQL record | "User profile not found" |
+| 404 | `USER_NOT_FOUND` | Email has no corresponding MySQL record | "User profile not found" |
 | 409 | `ALREADY_BOOKED` | Passenger already has a booking for this ride | "You have already booked this ride" |
 | 409 | `DUPLICATE_EMAIL` | Email already registered in `users` table | "An account with this email already exists" |
 | 500 | `DB_ERROR` | MySQL query failure | "Something went wrong. Please try again" |
@@ -1715,10 +1866,14 @@ Case 3 — No-Show:
 | 200 | `REPORT_WARNING_ONLY` | Single conduct report filed (shield applied) | "Report submitted. A system warning has been issued" |
 | 200 | `REPORT_PATTERN_PENALTY` | Pattern-matched conduct reports confirmed | "Report submitted. Pattern detected — trust score adjusted" |
 | 200 | `RIDE_COMPLETION_PROMPT` | 2+ hours after departure, driver prompted | "Is your trip to {destination} finished?" |
+| 429 | `OTP_RATE_LIMIT` | OTP requested within 60 seconds of last request | "Please wait before requesting a new code" |
+| 400 | `OTP_EXPIRED` | OTP verification attempted after 10-minute window | "Code has expired. Please request a new one" |
+| 400 | `OTP_INVALID` | Submitted OTP does not match stored hash | "Incorrect code. {N} attempts remaining" |
+| 400 | `OTP_LOCKED` | 3 failed OTP attempts on the same code | "Too many failed attempts. Request a new code" |
 
 ---
 
 *Document: Software Requirements Specification (SRS)*
 *Project: RideMates — University Peer-to-Peer Commute Network*
-*Version: 1.2 | February 2026*
+*Version: 1.4 | March 2026*
 *Standard: IEEE 830-1998*

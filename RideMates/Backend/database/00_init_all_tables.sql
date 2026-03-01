@@ -1,4 +1,3 @@
--- Active: 1772188124100@@mysql-35f2a6a0-bhamrasamar01.j.aivencloud.com@26669
 -- =====================================================
 -- RideMates Database Initialization Script (SRS v1.3)
 -- =====================================================
@@ -10,14 +9,15 @@
 --     Only run this when you want a fresh database.
 --
 -- Drop order (reverse of create — respect foreign keys):
---   reports  → bookings → rides → users → fuel_rates
+--   reports → bookings → rides → user_otps → users → fuel_rates
 --
 -- Create order (dependencies first):
 --   1. users      (no dependencies)
---   2. rides      (depends on users)
---   3. bookings   (depends on users + rides)
---   4. reports    (depends on users + rides)
---   5. fuel_rates (no dependencies, used by pricing logic)
+--   2. user_otps  (depends on users — OTP verification records)
+--   3. rides      (depends on users)
+--   4. bookings   (depends on users + rides)
+--   5. reports    (depends on users + rides)
+--   6. fuel_rates (no dependencies, used by pricing logic)
 --
 
 -- =====================================================
@@ -27,6 +27,7 @@
 DROP TABLE IF EXISTS reports;
 DROP TABLE IF EXISTS bookings;
 DROP TABLE IF EXISTS rides;
+DROP TABLE IF EXISTS user_otps;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS fuel_rates;
 
@@ -36,6 +37,7 @@ DROP TABLE IF EXISTS fuel_rates;
 -- =====================================================
 -- Stores every verified university member.
 --
+-- • No firebase_uid — auth is handled by backend OTP + JWT
 -- • gender         → used for women-only ride filtering
 -- • trust_score    → starts at 100, decremented by penalties
 -- • current_streak → consecutive clean rides, resets on penalty
@@ -43,7 +45,6 @@ DROP TABLE IF EXISTS fuel_rates;
 
 CREATE TABLE users (
     id              INT AUTO_INCREMENT PRIMARY KEY,
-    firebase_uid    VARCHAR(128) NOT NULL UNIQUE       COMMENT 'Firebase Auth UID — links this row to Firebase',
     full_name       VARCHAR(100) NOT NULL               COMMENT 'User full name',
     email           VARCHAR(100) NOT NULL UNIQUE        COMMENT 'University email (must be @lpu.in)',
     phone           VARCHAR(15)                         COMMENT 'Phone number (optional)',
@@ -56,14 +57,41 @@ CREATE TABLE users (
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-    INDEX idx_firebase_uid (firebase_uid),
     INDEX idx_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 COMMENT='All verified university members (SRS Section 5.1)';
 
 
 -- =====================================================
--- TABLE 2: rides
+-- TABLE 2: user_otps (SRS v1.4 — OTP Authentication)
+-- =====================================================
+-- Stores backend-generated 6-digit OTPs for email verification.
+--
+-- • otp_hash       → SHA-256 hash of the 6-digit OTP (never store plaintext)
+-- • expires_at     → OTP valid for 10 minutes (SRS FR-AUTH-08)
+-- • attempts       → tracks failed verification attempts (max 3, SRS FR-AUTH-10)
+-- • is_verified    → set to TRUE once OTP is successfully verified
+-- • purpose        → 'login' or 'signup' to distinguish flows
+-- =====================================================
+
+CREATE TABLE user_otps (
+    id              INT AUTO_INCREMENT PRIMARY KEY       COMMENT 'Unique OTP record ID',
+    email           VARCHAR(100) NOT NULL                COMMENT 'Email the OTP was sent to',
+    otp_hash        VARCHAR(64) NOT NULL                 COMMENT 'SHA-256 hash of the 6-digit OTP',
+    purpose         ENUM('login', 'signup') NOT NULL DEFAULT 'login' COMMENT 'Whether OTP is for login or signup',
+    attempts        INT NOT NULL DEFAULT 0               COMMENT 'Failed verification attempts (locked after 3)',
+    is_verified     BOOLEAN DEFAULT FALSE                COMMENT 'TRUE once OTP successfully verified',
+    expires_at      DATETIME NOT NULL                    COMMENT 'OTP expiry time (10 minutes after creation)',
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP  COMMENT 'When the OTP was generated',
+
+    INDEX idx_email (email),
+    INDEX idx_expires (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT='OTP records for email verification (SRS Section 5.1, FR-AUTH-02)';
+
+
+-- =====================================================
+-- TABLE 3: rides
 -- =====================================================
 -- Stores every ride posted by drivers.
 -- Depends on: users (driver_id → users.id)
@@ -112,7 +140,7 @@ COMMENT='All rides posted by drivers (SRS Section 5.1)';
 
 
 -- =====================================================
--- TABLE 3: bookings
+-- TABLE 4: bookings
 -- =====================================================
 -- Stores every seat reservation by passengers.
 -- Depends on: users (passenger_id) and rides (ride_id)
@@ -144,7 +172,7 @@ COMMENT='All seat reservations by passengers (SRS Section 5.1)';
 
 
 -- =====================================================
--- TABLE 4: reports
+-- TABLE 5: reports
 -- =====================================================
 -- Stores incident reports filed by users.
 -- Depends on: users (reporter_id, reported_user_id) and rides (ride_id)
@@ -178,7 +206,7 @@ COMMENT='Incident reports for trust system (SRS Section 5.1)';
 
 
 -- =====================================================
--- TABLE 5: fuel_rates (Reference Table)
+-- TABLE 6: fuel_rates (Reference Table)
 -- =====================================================
 -- Stores current fuel prices used by the pricing algorithm.
 -- No foreign keys — standalone lookup table.
@@ -209,15 +237,16 @@ INSERT INTO fuel_rates (fuel_type, rate_per_litre) VALUES
 
 
 -- =====================================================
--- ✅ ALL 5 TABLES CREATED SUCCESSFULLY
+-- ✅ ALL 6 TABLES CREATED SUCCESSFULLY
 -- =====================================================
 --
 -- Summary:
 --   1. users      — university members (with trust_score, gender)
---   2. rides      — driver-posted rides (with women-only, instant booking)
---   3. bookings   — passenger reservations (with cancellation_penalty)
---   4. reports    — incident reports (pattern-match trust system)
---   5. fuel_rates — fuel prices for pricing algorithm
+--   2. user_otps  — OTP records for email verification (login/signup)
+--   3. rides      — driver-posted rides (with women-only, instant booking)
+--   4. bookings   — passenger reservations (with cancellation_penalty)
+--   5. reports    — incident reports (pattern-match trust system)
+--   6. fuel_rates — fuel prices for pricing algorithm
 --
 -- Foreign key chain:
 --   users ──1:N──▶ rides ──1:N──▶ bookings
@@ -225,6 +254,7 @@ INSERT INTO fuel_rates (fuel_type, rate_per_litre) VALUES
 --   users ──1:N──▶ reports (as reporter)
 --   users ──1:N──▶ reports (as reported)
 --   rides ──1:N──▶ reports
+--   user_otps references users by email (no FK — allows OTPs before registration)
 --
 -- Next steps:
 --   1. Run this entire script in your Aiven MySQL console
