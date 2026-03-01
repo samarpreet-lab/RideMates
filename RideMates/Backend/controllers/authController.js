@@ -128,10 +128,11 @@ async function sendOtp(req, res) {
       });
     }
 
-    // --- For login: check if user exists ---
+    // --- For login: check if user exists and retrieve full name ---
+    let displayName = 'Student'; // Default for signup
     if (purpose === 'login') {
       const [existingUsers] = await pool.query(
-        'SELECT id FROM users WHERE email = ?',
+        'SELECT id, full_name FROM users WHERE email = ?',
         [email]
       );
       if (existingUsers.length === 0) {
@@ -141,6 +142,8 @@ async function sendOtp(req, res) {
           error: 'USER_NOT_FOUND',
         });
       }
+      // Use the user's full name for login emails
+      displayName = existingUsers[0].full_name || 'Student';
     }
 
     // --- For signup: check if user already exists ---
@@ -156,6 +159,7 @@ async function sendOtp(req, res) {
           error: 'DUPLICATE_EMAIL',
         });
       }
+      displayName = 'Student'; // Default greeting for signup
     }
 
     // --- Rate limiting (SRS FR-AUTH-09): max 3 OTPs per 10 minutes ---
@@ -236,7 +240,7 @@ async function sendOtp(req, res) {
           <tr>
             <td style="background-color: #1a1a24; padding: 10px 30px 40px 30px; text-align: center;">
               <p style="margin: 0 0 10px 0; color: #ffffff; font-size: 14px;">PASSENGER</p>
-              <p style="margin: 0 0 25px 0; color: #ff8c42; font-size: 18px; font-weight: bold;">${escapeHtml(email.split('@')[0])}</p>
+              <p style="margin: 0 0 25px 0; color: #ff8c42; font-size: 18px; font-weight: bold;">${escapeHtml(displayName)}</p>
               
               <p style="margin: 0 0 10px 0; color: #8e8e9e; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Authorization Code</p>
               
@@ -247,7 +251,7 @@ async function sendOtp(req, res) {
               </div>
 
               <p style="margin: 25px 0 0 0; color: #8e8e9e; font-size: 12px;">
-                Valid for exactly <strong style="color: #ffffff;">10 minutes</strong>.
+                ⏱️ Valid for exactly <strong style="color: #ffffff;">10 minutes</strong>.
               </p>
             </td>
           </tr>
@@ -255,7 +259,7 @@ async function sendOtp(req, res) {
           <tr>
             <td style="background-color: #f8f9fa; padding: 20px 30px; text-align: left; border-top: 1px solid #eeeeee;">
               <p style="margin: 0 0 5px 0; font-size: 11px; color: #e63946; font-weight: bold; text-transform: uppercase;">
-                Security Notice
+                ⚠️ Security Notice
               </p>
               <p style="margin: 0; font-size: 11px; color: #6c757d; line-height: 1.5;">
                 Do not share this pass. Drivers will never ask for this code. If you did not request this, ignore this email.
@@ -266,7 +270,7 @@ async function sendOtp(req, res) {
         </table>
         
         <p style="margin: 20px 0 0 0; font-size: 11px; color: #adb5bd; text-align: center;">
-          Sent to ${escapeHtml(email)}
+          Sent to ${email}
         </p>
 
       </td>
