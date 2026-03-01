@@ -251,7 +251,7 @@ async function sendOtp(req, res) {
               </div>
 
               <p style="margin: 25px 0 0 0; color: #8e8e9e; font-size: 12px;">
-                ⏱️ Valid for exactly <strong style="color: #ffffff;">10 minutes</strong>.
+                ⏱ Valid for exactly <strong style="color: #ffffff;">10 minutes</strong>.
               </p>
             </td>
           </tr>
@@ -535,15 +535,15 @@ async function getProfile(req, res) {
 // PUT /api/auth/profile
 // =============================================================================
 // Allows the user to update their mutable profile fields.
-// Only full_name, phone, and profile_photo can be changed.
+// full_name, phone, gender, and profile_photo can be changed.
 // Email is immutable (set at registration).
 //
 // SRS FR-AUTH-07 — Profile update
-// Request Body: { full_name?, phone?, profile_photo? }
+// Request Body: { full_name?, phone?, gender?, profile_photo? }
 // =============================================================================
 async function updateProfile(req, res) {
   try {
-    const { full_name, phone, profile_photo } = req.body;
+    const { full_name, phone, gender, profile_photo } = req.body;
 
     // Build the SET clause dynamically — only update fields that were provided
     const updates = [];
@@ -556,6 +556,10 @@ async function updateProfile(req, res) {
     if (phone !== undefined) {
       updates.push('phone = ?');
       values.push(phone);
+    }
+    if (gender !== undefined) {
+      updates.push('gender = ?');
+      values.push(gender);
     }
     if (profile_photo !== undefined) {
       updates.push('profile_photo = ?');
