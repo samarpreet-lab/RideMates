@@ -185,60 +185,79 @@ async function sendOtp(req, res) {
       subject: 'Your RideMates Verification Code',
       html: `
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RideMates Verification Code</title>
+  <title>RideMates Entry Pass</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: #333;">
-  <div style="max-width: 480px; margin: 0 auto; padding: 40px 20px;">
-    
-    <!-- Header -->
-    <div style="margin-bottom: 32px;">
-      <div style="display: flex; align-items: center; margin-bottom: 16px;">
-        <span style="font-size: 24px; margin-right: 8px;"></span>
-        <span style="font-size: 20px; font-weight: 800; color: #ff8c42;">RideMates</span>
-      </div>
-    </div>
+<body style="margin: 0; padding: 0; background-color: #eceff1; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">
+  
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="padding: 40px 10px; background-color: #eceff1;">
+    <tr>
+      <td align="center">
+        
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 450px; background-color: #ffffff; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); overflow: hidden;">
+          
+          <tr>
+            <td style="background-color: #1a1a24; padding: 30px 20px 20px 20px; text-align: center;">
+              <h1 style="margin: 0; color: #ff8c42; font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px;">RideMates</h1>
+              <p style="margin: 5px 0 0 0; color: #8e8e9e; font-size: 12px; letter-spacing: 1px;">SECURE ENTRY PASS</p>
+            </td>
+          </tr>
 
-    <!-- Main Content -->
-    <div style="margin-bottom: 32px;">
-      <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #333;">
-        Hi ${email.split('@')[0]},
-      </p>
-      
-      <p style="margin: 0 0 28px 0; font-size: 14px; line-height: 1.6; color: #666;">
-        Use the following 6-digit code to securely log in to your RideMates account. This code ensures only verified LPU students can access the carpool network.
-      </p>
-    </div>
+          <tr>
+            <td style="background-color: #1a1a24;">
+              <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td width="20" style="background-color: #eceff1; border-radius: 0 20px 20px 0;">&nbsp;</td>
+                  <td style="border-top: 2px dashed #3f3f4e;">&nbsp;</td>
+                  <td width="20" style="background-color: #eceff1; border-radius: 20px 0 0 20px;">&nbsp;</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
 
-    <!-- OTP Display -->
-    <div style="background-color: #f5f5f5; border-radius: 12px; padding: 40px 20px; text-align: center; margin-bottom: 28px; border: 2px solid #ff8c42;">
-      <p style="margin: 0; font-size: 56px; font-weight: 900; letter-spacing: 12px; color: #ff8c42; font-family: 'Monaco', 'Courier New', monospace;">
-        ${otp}
-      </p>
-    </div>
+          <tr>
+            <td style="background-color: #1a1a24; padding: 10px 30px 40px 30px; text-align: center;">
+              <p style="margin: 0 0 10px 0; color: #ffffff; font-size: 14px;">PASSENGER</p>
+              <p style="margin: 0 0 25px 0; color: #ff8c42; font-size: 18px; font-weight: bold;">${email.split('@')[0]}</p>
+              
+              <p style="margin: 0 0 10px 0; color: #8e8e9e; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Authorization Code</p>
+              
+              <div style="background-color: #ffb703; padding: 15px; border-radius: 8px; border: 2px solid #fb8500; display: inline-block; min-width: 250px;">
+                <p style="margin: 0; font-family: 'Courier New', Courier, monospace; font-size: 40px; font-weight: 900; color: #023047; letter-spacing: 16px; padding-left: 16px;">
+                  ${otp}
+                </p>
+              </div>
 
-    <!-- Expiry Info -->
-    <div style="text-align: center; margin-bottom: 28px; color: #888; font-size: 13px;">
-      Valid for the next 10 minutes
-    </div>
+              <p style="margin: 25px 0 0 0; color: #8e8e9e; font-size: 12px;">
+                ⏱️ Valid for exactly <strong style="color: #ffffff;">10 minutes</strong>.
+              </p>
+            </td>
+          </tr>
 
-    <!-- Security Warning -->
-    <div style="background-color: #fef9f0; border-left: 4px solid #ff8c42; padding: 16px; margin-bottom: 28px; border-radius: 4px;">
-      <p style="margin: 0; font-size: 13px; line-height: 1.6; color: #333;">
-        <strong>Never share this code.</strong> RideMates staff and verified drivers will never ask for your OTP. Do not forward this email to anyone.
-      </p>
-    </div>
+          <tr>
+            <td style="background-color: #f8f9fa; padding: 20px 30px; text-align: left; border-top: 1px solid #eeeeee;">
+              <p style="margin: 0 0 5px 0; font-size: 11px; color: #e63946; font-weight: bold; text-transform: uppercase;">
+                ⚠️ Security Notice
+              </p>
+              <p style="margin: 0; font-size: 11px; color: #6c757d; line-height: 1.5;">
+                Do not share this pass. Drivers will never ask for this code. If you did not request this, ignore this email.
+              </p>
+            </td>
+          </tr>
 
-    <!-- Footer -->
-    <div style="border-top: 1px solid #eee; padding-top: 20px; font-size: 11px; color: #999; text-align: center;">
-      <p style="margin: 0;">This email was sent to ${email}</p>
-      <p style="margin: 8px 0 0 0;">© 2026 RideMates. All rights reserved.</p>
-    </div>
+        </table>
+        
+        <p style="margin: 20px 0 0 0; font-size: 11px; color: #adb5bd; text-align: center;">
+          Sent to ${email}
+        </p>
 
-  </div>
+      </td>
+    </tr>
+  </table>
+
 </body>
 </html>
       `,
