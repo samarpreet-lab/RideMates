@@ -72,7 +72,7 @@ export default function LocationPickerModal({
 
         {/* Search input */}
         <View style={s.locPickerInputWrap}>
-          <MaterialIcons name="search" size={20} color="#F37021" style={{ marginRight: 8 }} />
+          <MaterialIcons name="search" size={20} color="#C24E00" style={{ marginRight: 8 }} />
           <TextInput
             ref={inputRef}
             style={s.locPickerInput}
@@ -107,7 +107,7 @@ export default function LocationPickerModal({
               activeOpacity={0.75}
             >
               <View style={s.locHubIconWrap}>
-                <MaterialIcons name={item.icon} size={20} color="#F37021" />
+                <MaterialIcons name={item.icon} size={20} color="#C24E00" />
               </View>
               <View style={s.locHubTextWrap}>
                 <Text style={s.locHubName}>{item.label}</Text>
@@ -135,7 +135,7 @@ export default function LocationPickerModal({
                 onPress={() => onSelect(q.label)}
                 activeOpacity={0.8}
               >
-                <MaterialIcons name={q.icon} size={13} color="#F37021" />
+                <MaterialIcons name={q.icon} size={13} color="#C24E00" />
                 <Text style={s.locQuickChipText}>{q.label}</Text>
               </TouchableOpacity>
             ))}

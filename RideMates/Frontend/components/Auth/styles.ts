@@ -10,7 +10,7 @@ export const authStyles = StyleSheet.create({
   // ─── Screen Containers ────────────────────────────────
   safeContainer: {
     flex: 1,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: '#FAF7F4',
   },
   scrollContent: {
     flexGrow: 1,
@@ -40,7 +40,7 @@ export const authStyles = StyleSheet.create({
   },
   description: {
     fontSize: 13,
-    color: '#666',
+    color: '#6B5344',
     textAlign: 'center',
     lineHeight: 18,
   },
@@ -60,13 +60,13 @@ export const authStyles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1a1a1a',
+    color: '#1E1610',
     marginBottom: 8,
     marginTop: 0,
   },
   subtitleText: {
     fontSize: 13,
-    color: '#666',
+    color: '#6B5344',
     marginBottom: 20,
     lineHeight: 18,
   },
@@ -84,18 +84,18 @@ export const authStyles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#333',
+    color: '#3D2F22',
   },
   labelHint: {
     fontSize: 12,
-    color: '#999',
+    color: '#A8937F',
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F5F0EB',
     borderWidth: 1,
-    borderColor: '#ff8c42',
+    borderColor: '#C24E00',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -106,7 +106,7 @@ export const authStyles = StyleSheet.create({
   inputWithIcon: {
     flex: 1,
     fontSize: 15,
-    color: '#1a1a1a',
+    color: '#1E1610',
     paddingVertical: 2,
   },
 
@@ -114,8 +114,8 @@ export const authStyles = StyleSheet.create({
   statusBadge: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#ff8c42',
-    backgroundColor: '#fff0e6',
+    color: '#C24E00',
+    backgroundColor: '#FEF0E4',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 6,
@@ -124,14 +124,14 @@ export const authStyles = StyleSheet.create({
 
   // ─── OTP Input ───────────────────────────────────────
   otpInputWrapper: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#FAF7F4',
     borderWidth: 2,
-    borderColor: '#ff8c42',
+    borderColor: '#C24E00',
     borderRadius: 14,
     paddingHorizontal: 24,
     paddingVertical: 18,
     elevation: 2,
-    shadowColor: '#ff8c42',
+    shadowColor: '#C24E00',
     shadowOpacity: 0.1,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
@@ -139,7 +139,7 @@ export const authStyles = StyleSheet.create({
   otpInput: {
     fontSize: 40,
     fontWeight: '900',
-    color: '#ff8c42',
+    color: '#C24E00',
     textAlign: 'center',
     letterSpacing: 10,
     fontFamily: 'monospace',
@@ -154,15 +154,15 @@ export const authStyles = StyleSheet.create({
   },
   resendText: {
     fontSize: 12,
-    color: '#666',
+    color: '#6B5344',
   },
   resendLink: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#ff8c42',
+    color: '#C24E00',
   },
   resendLinkDisabled: {
-    color: '#ccc',
+    color: '#EAE0D8',
   },
 
   // ─── Warning ─────────────────────────────────────────
@@ -175,12 +175,12 @@ export const authStyles = StyleSheet.create({
   },
   warningText: {
     fontSize: 12,
-    color: '#666',
+    color: '#6B5344',
     marginLeft: 8,
   },
   warningBold: {
     fontWeight: '700',
-    color: '#ff8c42',
+    color: '#C24E00',
   },
 
   // ─── Info Box ────────────────────────────────────────
@@ -188,7 +188,7 @@ export const authStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginBottom: 20,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F5F0EB',
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 14,
@@ -199,14 +199,14 @@ export const authStyles = StyleSheet.create({
   },
   infoText: {
     fontSize: 13,
-    color: '#666',
+    color: '#6B5344',
     lineHeight: 18,
     flex: 1,
   },
 
   // ─── Buttons ─────────────────────────────────────────
   continueButton: {
-    backgroundColor: '#ff8c42',
+    backgroundColor: '#C24E00',
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 20,
@@ -215,7 +215,7 @@ export const authStyles = StyleSheet.create({
     flexDirection: 'row',
     flex: 1,
     elevation: 2,
-    shadowColor: '#ff8c42',
+    shadowColor: '#C24E00',
     shadowOpacity: 0.3,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
@@ -234,7 +234,7 @@ export const authStyles = StyleSheet.create({
     flexDirection: 'row',
     flex: 1,
     borderWidth: 2,
-    borderColor: '#e0e0e0',
+    borderColor: '#EAE0D8',
   },
   buttonGroup: {
     flexDirection: 'row',
@@ -252,7 +252,7 @@ export const authStyles = StyleSheet.create({
     fontWeight: '700',
   },
   secondaryButtonText: {
-    color: '#555',
+    color: '#6B5344',
     fontSize: 16,
     fontWeight: '700',
   },
@@ -274,26 +274,26 @@ export const authStyles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 8,
     borderRadius: 12,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#FAF7F4',
     borderWidth: 2,
-    borderColor: '#e0e0e0',
+    borderColor: '#EAE0D8',
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
   },
   genderOptionSelected: {
-    backgroundColor: '#fffaf0',
-    borderColor: '#ff8c42',
+    backgroundColor: '#FFF8F2',
+    borderColor: '#C24E00',
   },
   genderOptionText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#666',
+    color: '#6B5344',
     textAlign: 'center',
     flexShrink: 1,
   },
   genderOptionTextSelected: {
-    color: '#ff8c42',
+    color: '#C24E00',
     fontWeight: '700',
   },
 
@@ -302,7 +302,7 @@ export const authStyles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#FAF7F4',
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,
@@ -310,11 +310,11 @@ export const authStyles = StyleSheet.create({
   },
   footerText: {
     fontSize: 13,
-    color: '#666',
+    color: '#6B5344',
   },
   footerLink: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#ff8c42',
+    color: '#C24E00',
   },
 });

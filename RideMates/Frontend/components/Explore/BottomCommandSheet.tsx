@@ -79,14 +79,14 @@ export default function BottomCommandSheet({
         <MaterialIcons
           name="search"
           size={20}
-          color="#F37021"
+          color="#C24E00"
           style={{ marginLeft: 12 }}
         />
         <Text style={s.searchBarBtnText}>
           Where to, {profile ? profile.full_name : 'you'}?
         </Text>
         <View style={s.searchBarArrow}>
-          <MaterialIcons name="keyboard-arrow-up" size={18} color="#F37021" />
+          <MaterialIcons name="keyboard-arrow-up" size={18} color="#C24E00" />
         </View>
       </TouchableOpacity>
 

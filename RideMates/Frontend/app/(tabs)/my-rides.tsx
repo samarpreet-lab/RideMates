@@ -130,7 +130,7 @@ export default function MyRidesScreen() {
                         <MaterialIcons
                             name="history"
                             size={18}
-                            color={activeTab === 'booked' ? '#F37021' : '#888'}
+                            color={activeTab === 'booked' ? '#C24E00' : '#888'}
                         />
                         <Text style={[s.tabText, activeTab === 'booked' && s.tabTextActive]}>
                             Booked
@@ -147,7 +147,7 @@ export default function MyRidesScreen() {
                         <MaterialIcons
                             name="drive-eta"
                             size={18}
-                            color={activeTab === 'published' ? '#F37021' : '#888'}
+                            color={activeTab === 'published' ? '#C24E00' : '#888'}
                         />
                         <Text style={[s.tabText, activeTab === 'published' && s.tabTextActive]}>
                             Published
@@ -167,7 +167,7 @@ export default function MyRidesScreen() {
             {/* Content Area */}
             {loading ? (
                 <View style={s.centerContainer}>
-                    <ActivityIndicator size="large" color="#F37021" />
+                    <ActivityIndicator size="large" color="#C24E00" />
                 </View>
             ) : errorLine ? (
                 <View style={s.centerContainer}>

@@ -5,7 +5,7 @@
 import { StyleSheet, Platform, StatusBar } from 'react-native';
 
 export const s = StyleSheet.create({
-    root: { flex: 1, backgroundColor: '#f5f5f5' },
+    root: { flex: 1, backgroundColor: '#F5F0EB' },
 
     // Header 
     header: {
@@ -14,9 +14,9 @@ export const s = StyleSheet.create({
         paddingBottom: 16,
         backgroundColor: '#fff',
         borderBottomWidth: 1,
-        borderBottomColor: '#ebebeb',
+        borderBottomColor: '#EAE0D8',
     },
-    headerTitle: { fontSize: 24, fontWeight: '800', color: '#1a1a1a' },
+    headerTitle: { fontSize: 24, fontWeight: '800', color: '#1E1610' },
 
     // Custom Top Tabs
     tabRow: {
@@ -25,7 +25,7 @@ export const s = StyleSheet.create({
         paddingHorizontal: 16,
         paddingTop: 8,
         borderBottomWidth: 1,
-        borderBottomColor: '#e0e0e0',
+        borderBottomColor: '#EAE0D8',
         position: 'relative',
         zIndex: 1,
     },
@@ -43,16 +43,16 @@ export const s = StyleSheet.create({
     tabText: {
         fontSize: 14,
         fontWeight: '700',
-        color: '#888',
+        color: '#6B5344',
     },
     tabTextActive: {
-        color: '#F37021',
+        color: '#C24E00',
     },
     activeIndicator: {
         position: 'absolute',
         bottom: -1,
         height: 3,
-        backgroundColor: '#F37021',
+        backgroundColor: '#C24E00',
         borderTopLeftRadius: 3,
         borderTopRightRadius: 3,
         zIndex: 2,
@@ -77,12 +77,12 @@ export const s = StyleSheet.create({
     emptyTitle: {
         fontSize: 18,
         fontWeight: '700',
-        color: '#444',
+        color: '#3D2F22',
         marginTop: 16,
     },
     emptySub: {
         fontSize: 14,
-        color: '#888',
+        color: '#6B5344',
         textAlign: 'center',
         marginTop: 8,
         lineHeight: 20,
@@ -94,7 +94,7 @@ export const s = StyleSheet.create({
         borderRadius: 16,
         padding: 16,
         borderWidth: 1,
-        borderColor: '#f0f0f0',
+        borderColor: '#EAE0D8',
         elevation: 2,
         shadowColor: '#000',
         shadowOpacity: 0.05,
@@ -127,10 +127,10 @@ export const s = StyleSheet.create({
         marginTop: 14,
         paddingTop: 12,
         borderTopWidth: 1,
-        borderTopColor: '#f5f5f5',
+        borderTopColor: '#F5F0EB',
     },
-    metaLabel: { fontSize: 11, color: '#888', fontWeight: '600' },
-    metaValue: { fontSize: 13, color: '#1a1a1a', fontWeight: '800' },
+    metaLabel: { fontSize: 11, color: '#6B5344', fontWeight: '600' },
+    metaValue: { fontSize: 13, color: '#1E1610', fontWeight: '800' },
 
     // Cancel Booking button (passenger cards)
     cancelBookingBtn: {
@@ -149,5 +149,24 @@ export const s = StyleSheet.create({
         fontSize: 13,
         fontWeight: '700',
         color: '#ef4444',
+    },
+
+    // "Booked" banner for driver's published rides that have bookings
+    bookedBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: '#d1fae5',
+        borderWidth: 1,
+        borderColor: '#6ee7b7',
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        marginBottom: 12,
+    },
+    bookedBannerText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#059669',
     },
 });

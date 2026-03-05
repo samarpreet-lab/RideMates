@@ -32,11 +32,11 @@ const ALERT_CONFIG: Record<AlertType, {
     color: string;
     bgLight: string;
 }> = {
-    success: { icon: 'check-circle', color: '#16a34a', bgLight: '#f0fdf4' },
-    error: { icon: 'error', color: '#dc2626', bgLight: '#fef2f2' },
-    warning: { icon: 'warning', color: '#f59e0b', bgLight: '#fffbeb' },
+    success: { icon: 'check-circle', color: '#3DAA6E', bgLight: '#F2FAF5' },
+    error: { icon: 'error', color: '#D9622A', bgLight: '#FFF6F5' },
+    warning: { icon: 'warning', color: '#D4960F', bgLight: '#FEFDF2' },
     info: { icon: 'info', color: '#2563eb', bgLight: '#eff6ff' },
-    confirm: { icon: 'help-outline', color: '#F37021', bgLight: '#fff7ed' },
+    confirm: { icon: 'help-outline', color: '#C24E00', bgLight: '#FFF8F2' },
 };
 
 export default function CustomAlert({
@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
     },
     message: {
         fontSize: 14,
-        color: '#666',
+        color: '#6B5344',
         textAlign: 'center',
         lineHeight: 21,
         marginBottom: 24,
@@ -216,14 +216,14 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     btnCancel: {
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#F5F0EB',
         borderWidth: 1,
-        borderColor: '#e0e0e0',
+        borderColor: '#EAE0D8',
     },
     btnCancelText: {
         fontSize: 15,
         fontWeight: '700',
-        color: '#666',
+        color: '#6B5344',
     },
     btnConfirm: {
         elevation: 2,

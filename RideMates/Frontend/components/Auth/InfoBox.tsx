@@ -18,7 +18,7 @@ interface InfoBoxProps {
 export default function InfoBox({ iconName, text }: InfoBoxProps) {
   return (
     <View style={s.infoTextContainer}>
-      <MaterialIcons name={iconName} size={16} color="#ff8c42" style={s.infoIcon} />
+      <MaterialIcons name={iconName} size={16} color="#C24E00" style={s.infoIcon} />
       <Text style={s.infoText}>{text}</Text>
     </View>
   );

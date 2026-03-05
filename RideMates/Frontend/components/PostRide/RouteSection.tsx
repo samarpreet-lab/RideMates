@@ -26,7 +26,7 @@ export default function RouteSection({
         <View style={s.sectionCard}>
             <View style={s.sectionHeader}>
                 <View style={s.sectionIconCircle}>
-                    <MaterialIcons name="route" size={18} color="#F37021" />
+                    <MaterialIcons name="route" size={18} color="#C24E00" />
                 </View>
                 <Text style={s.sectionTitle}>Route Details</Text>
             </View>
@@ -62,7 +62,7 @@ export default function RouteSection({
             {/* Distance badge */}
             {distanceKm > 0 && (
                 <View style={s.distanceBadge}>
-                    <MaterialIcons name="straighten" size={14} color="#F37021" />
+                    <MaterialIcons name="straighten" size={14} color="#C24E00" />
                     <Text style={s.distanceText}>{distanceKm} km (approx)</Text>
                 </View>
             )}
@@ -71,13 +71,13 @@ export default function RouteSection({
             <Text style={s.fieldLabel}>DEPARTURE</Text>
             <View style={s.dateTimeRow}>
                 <TouchableOpacity style={s.dateTimeBtn} onPress={() => setShowDatePicker(true)} activeOpacity={0.7}>
-                    <MaterialIcons name="calendar-today" size={16} color="#F37021" />
+                    <MaterialIcons name="calendar-today" size={16} color="#C24E00" />
                     <Text style={s.dateTimeBtnText}>
                         {departureDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={s.dateTimeBtn} onPress={() => setShowTimePicker(true)} activeOpacity={0.7}>
-                    <MaterialIcons name="schedule" size={16} color="#F37021" />
+                    <MaterialIcons name="schedule" size={16} color="#C24E00" />
                     <Text style={s.dateTimeBtnText}>
                         {departureTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
                     </Text>

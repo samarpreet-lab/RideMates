@@ -78,7 +78,7 @@ export default function RideCard({ ride, onDismissModal }: RideCardProps) {
           <Text style={s.rideRouteCity} numberOfLines={1}>{ride.destination_city}</Text>
         </View>
         <View style={s.rideTimeBox}>
-          <MaterialIcons name="schedule" size={14} color="#F37021" />
+          <MaterialIcons name="schedule" size={14} color="#C24E00" />
           <Text style={s.rideTimeText}>{formatDepartureTime(ride.departure_time)}</Text>
         </View>
       </View>

@@ -5,13 +5,13 @@
 import { StyleSheet, Platform, StatusBar } from 'react-native';
 
 export const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#e8e8e8' },
+  root: { flex: 1, backgroundColor: '#EAE0D8' },
 
   loadingContainer: {
     flex: 1, justifyContent: 'center', alignItems: 'center',
-    backgroundColor: '#f5f5f5', gap: 12,
+    backgroundColor: '#F5F0EB', gap: 12,
   },
-  loadingText: { fontSize: 14, color: '#888' },
+  loadingText: { fontSize: 14, color: '#6B5344' },
 
   // ─── Top Bar ──────────────────────────────────────────────────────────────
   topBarSafe: {
@@ -34,7 +34,7 @@ export const s = StyleSheet.create({
   },
   avatarCircle: {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: '#F37021', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#C24E00', alignItems: 'center', justifyContent: 'center',
   },
   avatarInitials: { fontSize: 14, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
   roleBadge: {
@@ -82,15 +82,15 @@ export const s = StyleSheet.create({
   },
   sheetHandle: { paddingHorizontal: 20, paddingBottom: 8 },
   handleBar: {
-    width: 40, height: 4, backgroundColor: '#ddd', borderRadius: 2,
+    width: 40, height: 4, backgroundColor: '#EAE0D8', borderRadius: 2,
     alignSelf: 'center', marginTop: 10, marginBottom: 12,
   },
   greetingRow: {
     flexDirection: 'row', alignItems: 'center',
     justifyContent: 'space-between', marginBottom: 4,
   },
-  greetingTitle: { fontSize: 17, fontWeight: '700', color: '#1a1a1a' },
-  greetingSubtitle: { fontSize: 13, color: '#888', marginTop: 2 },
+  greetingTitle: { fontSize: 17, fontWeight: '700', color: '#1E1610' },
+  greetingSubtitle: { fontSize: 13, color: '#6B5344', marginTop: 2 },
   trustPill: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
@@ -101,24 +101,24 @@ export const s = StyleSheet.create({
   // ─── Search Bar Button ────────────────────────────────────────────────────
   searchBarBtn: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#f9f9f9', borderRadius: 14, marginHorizontal: 16,
-    borderWidth: 1, borderColor: '#eee', height: 50, marginBottom: 14,
+    backgroundColor: '#FAF7F4', borderRadius: 14, marginHorizontal: 16,
+    borderWidth: 1, borderColor: '#EAE0D8', height: 50, marginBottom: 14,
   },
   searchBarBtnText: {
-    flex: 1, paddingHorizontal: 10, fontSize: 14, color: '#aaa',
+    flex: 1, paddingHorizontal: 10, fontSize: 14, color: '#A8937F',
   },
   searchBarArrow: {
-    marginRight: 12, backgroundColor: '#fff4eb',
+    marginRight: 12, backgroundColor: '#FEF0E4',
     borderRadius: 8, padding: 4,
   },
 
   // ─── CTAs ─────────────────────────────────────────────────────────────────
   ctaRow: { paddingHorizontal: 16, gap: 10 },
   postRideBtn: {
-    backgroundColor: '#F37021', borderRadius: 14, height: 50,
+    backgroundColor: '#C24E00', borderRadius: 14, height: 50,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 8, elevation: 4,
-    shadowColor: '#F37021', shadowOpacity: 0.35,
+    shadowColor: '#C24E00', shadowOpacity: 0.35,
     shadowRadius: 8, shadowOffset: { width: 0, height: 4 },
   },
   postRideBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
@@ -158,26 +158,26 @@ export const s = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 34 : 20,
   },
   modalHandle: {
-    width: 40, height: 4, backgroundColor: '#ddd', borderRadius: 2,
+    width: 40, height: 4, backgroundColor: '#EAE0D8', borderRadius: 2,
     alignSelf: 'center', marginTop: 10,
   },
   modalHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingTop: 14, paddingBottom: 12,
   },
-  modalTitle: { fontSize: 18, fontWeight: '800', color: '#1a1a1a' },
+  modalTitle: { fontSize: 18, fontWeight: '800', color: '#1E1610' },
   modalCloseBtn: {
-    backgroundColor: '#f5f5f5', borderRadius: 20, padding: 6,
+    backgroundColor: '#F5F0EB', borderRadius: 20, padding: 6,
   },
   modalBackBtn: {
-    backgroundColor: '#f5f5f5', borderRadius: 20, padding: 6, marginRight: 8,
+    backgroundColor: '#F5F0EB', borderRadius: 20, padding: 6, marginRight: 8,
   },
 
   // ─── Route Card ───────────────────────────────────────────────────────────
   routeCard: {
-    marginHorizontal: 16, backgroundColor: '#fafafa',
+    marginHorizontal: 16, backgroundColor: '#FAF7F4',
     borderRadius: 16, paddingVertical: 6,
-    borderWidth: 1, borderColor: '#f0f0f0',
+    borderWidth: 1, borderColor: '#EAE0D8',
     marginBottom: 16,
   },
   routeRow: {
@@ -186,45 +186,45 @@ export const s = StyleSheet.create({
   },
   originDot: {
     width: 12, height: 12, borderRadius: 6,
-    backgroundColor: '#1a1a1a', borderWidth: 2.5, borderColor: '#1a1a1a',
+    backgroundColor: '#1E1610', borderWidth: 2.5, borderColor: '#1E1610',
   },
   destDot: {
     width: 12, height: 12, borderRadius: 3,
-    backgroundColor: '#F37021',
+    backgroundColor: '#C24E00',
   },
   routeDividerLine: {
-    flex: 1, height: 2, backgroundColor: '#e0e0e0',
+    flex: 1, height: 2, backgroundColor: '#EAE0D8',
   },
   swapRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingHorizontal: 16, marginVertical: -2,
   },
   routeFieldBox: { flex: 1 },
-  routeFieldLabel: { fontSize: 10, fontWeight: '700', color: '#bbb', letterSpacing: 0.6, marginBottom: 2 },
-  routeFieldValue: { fontSize: 15, fontWeight: '700', color: '#1a1a1a' },
-  routeFieldPlaceholder: { fontSize: 15, fontWeight: '500', color: '#bbb' },
-  routeFieldInput: { fontSize: 15, fontWeight: '600', color: '#1a1a1a', padding: 0 },
+  routeFieldLabel: { fontSize: 10, fontWeight: '700', color: '#A8937F', letterSpacing: 0.6, marginBottom: 2 },
+  routeFieldValue: { fontSize: 15, fontWeight: '700', color: '#1E1610' },
+  routeFieldPlaceholder: { fontSize: 15, fontWeight: '500', color: '#A8937F' },
+  routeFieldInput: { fontSize: 15, fontWeight: '600', color: '#1E1610', padding: 0 },
   swapBtn: {
-    backgroundColor: '#fff4eb', borderRadius: 20, padding: 6,
-    borderWidth: 1, borderColor: '#ffe0c4',
+    backgroundColor: '#FEF0E4', borderRadius: 20, padding: 6,
+    borderWidth: 1, borderColor: '#FCDCBF',
   },
 
   // ─── Quick Select ─────────────────────────────────────────────────────────
   sectionLabel: {
-    fontSize: 12, fontWeight: '700', color: '#888',
+    fontSize: 12, fontWeight: '700', color: '#6B5344',
     marginLeft: 20, marginBottom: 8, letterSpacing: 0.4,
   },
   quickSelectScroll: { paddingHorizontal: 16, gap: 8, marginBottom: 16 },
   quickChip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingHorizontal: 14, paddingVertical: 9,
-    backgroundColor: '#f5f5f5', borderRadius: 20,
-    borderWidth: 1, borderColor: '#ececec',
+    backgroundColor: '#F5F0EB', borderRadius: 20,
+    borderWidth: 1, borderColor: '#EAE0D8',
   },
   quickChipActive: {
-    backgroundColor: '#F37021', borderColor: '#F37021',
+    backgroundColor: '#C24E00', borderColor: '#C24E00',
   },
-  quickChipText: { fontSize: 13, fontWeight: '600', color: '#444' },
+  quickChipText: { fontSize: 13, fontWeight: '600', color: '#3D2F22' },
   quickChipTextActive: { color: '#fff' },
 
   // ─── Date Selector ────────────────────────────────────────────────────────
@@ -232,11 +232,11 @@ export const s = StyleSheet.create({
   dateChip: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     paddingHorizontal: 12, paddingVertical: 8,
-    backgroundColor: '#f5f5f5', borderRadius: 20,
-    borderWidth: 1, borderColor: '#ececec',
+    backgroundColor: '#F5F0EB', borderRadius: 20,
+    borderWidth: 1, borderColor: '#EAE0D8',
   },
-  dateChipActive: { backgroundColor: '#F37021', borderColor: '#F37021' },
-  dateChipText: { fontSize: 12, fontWeight: '600', color: '#444' },
+  dateChipActive: { backgroundColor: '#C24E00', borderColor: '#C24E00' },
+  dateChipText: { fontSize: 12, fontWeight: '600', color: '#3D2F22' },
   dateChipTextActive: { color: '#fff' },
 
   // ─── Filter Row ───────────────────────────────────────────────────────────
@@ -250,13 +250,13 @@ export const s = StyleSheet.create({
   seatStepper: {
     flexDirection: 'row', alignItems: 'center',
     gap: 8, marginRight: 16,
-    backgroundColor: '#f5f5f5', borderRadius: 20,
+    backgroundColor: '#F5F0EB', borderRadius: 20,
     paddingHorizontal: 10, paddingVertical: 6,
-    borderWidth: 1, borderColor: '#ececec',
+    borderWidth: 1, borderColor: '#EAE0D8',
   },
   stepperBtn: { padding: 2 },
   stepperValueWrap: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  stepperValue: { fontSize: 13, fontWeight: '700', color: '#333' },
+  stepperValue: { fontSize: 13, fontWeight: '700', color: '#3D2F22' },
 
   // ─── Emergency Toggle ─────────────────────────────────────────────────────
   emergencyToggleRow: {
@@ -267,19 +267,19 @@ export const s = StyleSheet.create({
     marginBottom: 16,
   },
   emergencyToggleLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-  emergencyToggleTitle: { fontSize: 13, fontWeight: '700', color: '#1a1a1a' },
-  emergencyToggleSub: { fontSize: 10, color: '#aaa', marginTop: 1 },
+  emergencyToggleTitle: { fontSize: 13, fontWeight: '700', color: '#1E1610' },
+  emergencyToggleSub: { fontSize: 10, color: '#A8937F', marginTop: 1 },
 
   // ─── Search CTA ───────────────────────────────────────────────────────────
   searchRidesBtn: {
-    marginHorizontal: 16, backgroundColor: '#F37021', borderRadius: 16,
+    marginHorizontal: 16, backgroundColor: '#C24E00', borderRadius: 16,
     height: 52, flexDirection: 'row', alignItems: 'center',
     justifyContent: 'center', gap: 8,
-    elevation: 4, shadowColor: '#F37021',
+    elevation: 4, shadowColor: '#C24E00',
     shadowOpacity: 0.35, shadowRadius: 8, shadowOffset: { width: 0, height: 4 },
   },
   searchRidesBtnDisabled: {
-    backgroundColor: '#e0e0e0',
+    backgroundColor: '#EAE0D8',
     shadowOpacity: 0,
   },
   searchRidesBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
@@ -289,16 +289,16 @@ export const s = StyleSheet.create({
   resultsSummary: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     marginHorizontal: 16, marginBottom: 14,
-    backgroundColor: '#fafafa', borderRadius: 12,
+    backgroundColor: '#FAF7F4', borderRadius: 12,
     paddingHorizontal: 14, paddingVertical: 10,
-    borderWidth: 1, borderColor: '#f0f0f0',
+    borderWidth: 1, borderColor: '#EAE0D8',
   },
   resultsSummaryRoute: {
     flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1,
   },
-  resultsSummaryText: { fontSize: 12, fontWeight: '600', color: '#555' },
+  resultsSummaryText: { fontSize: 12, fontWeight: '600', color: '#6B5344' },
   resultsEditBtn: {
-    backgroundColor: '#fff4eb', borderRadius: 16, padding: 6,
+    backgroundColor: '#FEF0E4', borderRadius: 16, padding: 6,
   },
   resultsList: { paddingHorizontal: 16, paddingBottom: 16 },
 
@@ -308,24 +308,24 @@ export const s = StyleSheet.create({
     paddingVertical: 40, paddingHorizontal: 32,
   },
   emptyStateTitle: {
-    fontSize: 18, fontWeight: '700', color: '#555', marginTop: 12,
+    fontSize: 18, fontWeight: '700', color: '#6B5344', marginTop: 12,
   },
   emptyStateSub: {
-    fontSize: 13, color: '#aaa', textAlign: 'center',
+    fontSize: 13, color: '#A8937F', textAlign: 'center',
     marginTop: 6, lineHeight: 19,
   },
   emptyStateBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    marginTop: 20, backgroundColor: '#fff4eb',
+    marginTop: 20, backgroundColor: '#FEF0E4',
     paddingHorizontal: 18, paddingVertical: 10, borderRadius: 20,
-    borderWidth: 1, borderColor: '#ffe0c4',
+    borderWidth: 1, borderColor: '#FCDCBF',
   },
-  emptyStateBtnText: { fontSize: 13, fontWeight: '700', color: '#F37021' },
+  emptyStateBtnText: { fontSize: 13, fontWeight: '700', color: '#C24E00' },
 
   // ─── Ride Card ────────────────────────────────────────────────────────────
   rideCard: {
     backgroundColor: '#fff', borderRadius: 16, padding: 16,
-    borderWidth: 1, borderColor: '#f0f0f0',
+    borderWidth: 1, borderColor: '#EAE0D8',
     elevation: 2, shadowColor: '#000', shadowOpacity: 0.06,
     shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
   },
@@ -336,37 +336,37 @@ export const s = StyleSheet.create({
   rideDriverInfo: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
   rideDriverAvatar: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#F37021', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#C24E00', alignItems: 'center', justifyContent: 'center',
     borderWidth: 2,
   },
   rideDriverInitials: { fontSize: 14, fontWeight: '800', color: '#fff' },
-  rideDriverName: { fontSize: 14, fontWeight: '700', color: '#1a1a1a' },
+  rideDriverName: { fontSize: 14, fontWeight: '700', color: '#1E1610' },
   rideDriverMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
   rideTrustText: { fontSize: 11, fontWeight: '700' },
-  rideMetaDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: '#ddd', marginHorizontal: 2 },
-  rideVehicleText: { fontSize: 11, color: '#888', textTransform: 'capitalize' },
+  rideMetaDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: '#EAE0D8', marginHorizontal: 2 },
+  rideVehicleText: { fontSize: 11, color: '#6B5344', textTransform: 'capitalize' },
   ridePriceBox: { alignItems: 'flex-end' },
-  ridePriceLabel: { fontSize: 18, fontWeight: '800', color: '#1a1a1a' },
-  ridePriceSub: { fontSize: 10, color: '#aaa', marginTop: 1 },
+  ridePriceLabel: { fontSize: 18, fontWeight: '800', color: '#1E1610' },
+  ridePriceSub: { fontSize: 10, color: '#A8937F', marginTop: 1 },
 
   // Route timeline
   rideRouteRow: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: '#fafafa', borderRadius: 12, padding: 12,
+    backgroundColor: '#FAF7F4', borderRadius: 12, padding: 12,
     marginBottom: 10,
   },
   rideRouteTimeline: { alignItems: 'center', width: 14 },
   rideOriginDot: {
     width: 8, height: 8, borderRadius: 4,
-    backgroundColor: '#1a1a1a', borderWidth: 2, borderColor: '#1a1a1a',
+    backgroundColor: '#1E1610', borderWidth: 2, borderColor: '#1E1610',
   },
-  rideRouteLine: { width: 2, height: 20, backgroundColor: '#ddd', marginVertical: 2 },
-  rideDestDot: { width: 8, height: 8, borderRadius: 2, backgroundColor: '#F37021' },
+  rideRouteLine: { width: 2, height: 20, backgroundColor: '#EAE0D8', marginVertical: 2 },
+  rideDestDot: { width: 8, height: 8, borderRadius: 2, backgroundColor: '#C24E00' },
   rideRouteDetails: { flex: 1 },
-  rideRouteCity: { fontSize: 12, fontWeight: '600', color: '#555' },
-  rideRouteDist: { fontSize: 10, color: '#bbb', marginVertical: 2 },
+  rideRouteCity: { fontSize: 12, fontWeight: '600', color: '#6B5344' },
+  rideRouteDist: { fontSize: 10, color: '#A8937F', marginVertical: 2 },
   rideTimeBox: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  rideTimeText: { fontSize: 11, fontWeight: '600', color: '#F37021' },
+  rideTimeText: { fontSize: 11, fontWeight: '600', color: '#C24E00' },
 
   // Badges
   rideBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
@@ -383,33 +383,33 @@ export const s = StyleSheet.create({
   rideEmergencyText: { fontSize: 11, fontWeight: '600', color: '#f59e0b' },
   rideFuelBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#f5f5f5', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12,
+    backgroundColor: '#F5F0EB', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12,
   },
-  rideFuelText: { fontSize: 11, color: '#888', textTransform: 'capitalize' },
+  rideFuelText: { fontSize: 11, color: '#6B5344', textTransform: 'capitalize' },
 
   // ─── Location Picker Modal ────────────────────────────────────────────────
   locPickerSafe: { flex: 1, backgroundColor: '#fff' },
   locPickerHeader: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 12, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
+    borderBottomWidth: 1, borderBottomColor: '#EAE0D8',
     gap: 10,
   },
   locPickerBackBtn: { padding: 4 },
-  locPickerTitle: { fontSize: 17, fontWeight: '700', color: '#1a1a1a', flex: 1 },
+  locPickerTitle: { fontSize: 17, fontWeight: '700', color: '#1E1610', flex: 1 },
   locPickerInputWrap: {
     flexDirection: 'row', alignItems: 'center',
     marginHorizontal: 16, marginTop: 14, marginBottom: 6,
-    borderWidth: 1.5, borderColor: '#F37021', borderRadius: 12,
+    borderWidth: 1.5, borderColor: '#C24E00', borderRadius: 12,
     paddingHorizontal: 14, paddingVertical: Platform.OS === 'ios' ? 14 : 10,
-    backgroundColor: '#fffaf7',
+    backgroundColor: '#FFF8F2',
   },
   locPickerInput: {
-    flex: 1, fontSize: 15, fontWeight: '600', color: '#1a1a1a',
+    flex: 1, fontSize: 15, fontWeight: '600', color: '#1E1610',
     padding: 0,
   },
   locPickerSectionLabel: {
-    fontSize: 11, fontWeight: '800', color: '#aaa',
+    fontSize: 11, fontWeight: '800', color: '#A8937F',
     letterSpacing: 0.8, marginTop: 12, marginBottom: 4,
     marginHorizontal: 16,
   },
@@ -419,26 +419,26 @@ export const s = StyleSheet.create({
   },
   locHubIconWrap: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#fff5ee', justifyContent: 'center', alignItems: 'center',
+    backgroundColor: '#FEF0E4', justifyContent: 'center', alignItems: 'center',
   },
   locHubTextWrap: { flex: 1 },
-  locHubName: { fontSize: 15, fontWeight: '700', color: '#1a1a1a' },
-  locHubSubtitle: { fontSize: 12, color: '#888', marginTop: 1 },
-  locHubSeparator: { height: 1, backgroundColor: '#f5f5f5', marginLeft: 70 },
+  locHubName: { fontSize: 15, fontWeight: '700', color: '#1E1610' },
+  locHubSubtitle: { fontSize: 12, color: '#6B5344', marginTop: 1 },
+  locHubSeparator: { height: 1, backgroundColor: '#F5F0EB', marginLeft: 70 },
   locPickerQuickWrap: {
-    borderTopWidth: 1, borderTopColor: '#f0f0f0',
+    borderTopWidth: 1, borderTopColor: '#EAE0D8',
     paddingTop: 6, paddingBottom: Platform.OS === 'ios' ? 28 : 12,
     backgroundColor: '#fff',
   },
   locPickerQuickLabel: {
-    fontSize: 11, fontWeight: '700', color: '#bbb',
+    fontSize: 11, fontWeight: '700', color: '#A8937F',
     letterSpacing: 0.6, marginLeft: 16, marginBottom: 2,
   },
   locQuickChip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingHorizontal: 14, paddingVertical: 9,
-    backgroundColor: '#fff5ee', borderRadius: 20,
-    borderWidth: 1, borderColor: '#ffd9b8', marginRight: 8,
+    backgroundColor: '#FEF0E4', borderRadius: 20,
+    borderWidth: 1, borderColor: '#FCDCBF', marginRight: 8,
   },
-  locQuickChipText: { fontSize: 13, fontWeight: '600', color: '#F37021' },
+  locQuickChipText: { fontSize: 13, fontWeight: '600', color: '#C24E00' },
 });

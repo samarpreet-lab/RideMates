@@ -66,7 +66,7 @@ export const LPU_REGION = {
 };
 
 export const LPU_LANDMARKS = [
-  { id: 'gate', title: 'LPU Main Gate', lat: 31.2538, lon: 75.7027, icon: 'home' as const, color: '#F37021' },
+  { id: 'gate', title: 'LPU Main Gate', lat: 31.2538, lon: 75.7027, icon: 'home' as const, color: '#C24E00' },
   { id: 'admin', title: 'Admin Block', lat: 31.2522, lon: 75.7015, icon: 'business' as const, color: '#1976d2' },
   { id: 'lib', title: 'Central Library', lat: 31.2510, lon: 75.7035, icon: 'local-library' as const, color: '#388e3c' },
   { id: 'hostel', title: 'Hostel Blocks', lat: 31.2545, lon: 75.7012, icon: 'hotel' as const, color: '#7b1fa2' },
@@ -149,9 +149,9 @@ export function getGreeting(): string {
 }
 
 export function getTrustColor(score: number): string {
-  if (score >= 75) return '#22c55e';
-  if (score >= 50) return '#f59e0b';
-  return '#ef4444';
+  if (score >= 75) return '#3DAA6E';
+  if (score >= 50) return '#D4960F';
+  return '#D9622A';
 }
 
 export function getDateString(option: string, customDate?: Date): string | undefined {

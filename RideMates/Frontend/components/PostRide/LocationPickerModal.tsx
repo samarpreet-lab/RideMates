@@ -72,7 +72,7 @@ export default function LocationPickerModal({
                             activeOpacity={0.7}
                         >
                             <View style={s.locPickerIcon}>
-                                <MaterialIcons name={item.icon} size={20} color="#F37021" />
+                                <MaterialIcons name={item.icon} size={20} color="#C24E00" />
                             </View>
                             <View style={{ flex: 1 }}>
                                 <Text style={s.locPickerItemLabel}>{item.label}</Text>

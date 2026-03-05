@@ -91,14 +91,14 @@ export default function EditRideModal({ visible, ride, onClose, onSave }: EditRi
                                 <Text style={ds.modalFieldLabel}>Departure Date & Time</Text>
                                 <View style={{ flexDirection: 'row', gap: 12 }}>
                                     <TouchableOpacity style={[ds.modalInputBox, { flex: 1.5 }]} onPress={() => setShowDatePicker(true)}>
-                                        <MaterialIcons name="event" size={18} color="#F37021" style={{ marginRight: 8 }} />
+                                        <MaterialIcons name="event" size={18} color="#C24E00" style={{ marginRight: 8 }} />
                                         <Text style={{ fontSize: 14, color: '#1a1a1a', fontWeight: '600' }}>
                                             {departureDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                                         </Text>
                                     </TouchableOpacity>
 
                                     <TouchableOpacity style={[ds.modalInputBox, { flex: 1 }]} onPress={() => setShowTimePicker(true)}>
-                                        <MaterialIcons name="schedule" size={18} color="#F37021" style={{ marginRight: 8 }} />
+                                        <MaterialIcons name="schedule" size={18} color="#C24E00" style={{ marginRight: 8 }} />
                                         <Text style={{ fontSize: 14, color: '#1a1a1a', fontWeight: '600' }}>
                                             {departureTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </Text>
@@ -159,7 +159,7 @@ export default function EditRideModal({ visible, ride, onClose, onSave }: EditRi
                                         value={isEmergency}
                                         onValueChange={setIsEmergency}
                                         trackColor={{ false: '#e0e0e0', true: '#fddcb8' }}
-                                        thumbColor={isEmergency ? '#F37021' : '#f4f3f4'}
+                                        thumbColor={isEmergency ? '#C24E00' : '#f4f3f4'}
                                     />
                                 </View>
 

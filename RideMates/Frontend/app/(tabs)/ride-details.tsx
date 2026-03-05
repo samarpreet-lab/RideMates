@@ -45,8 +45,9 @@ interface BookingData {
 }
 
 export default function RideDetailsScreen() {
-    const { rideId } = useLocalSearchParams<{ rideId: string }>();
+    const { rideId, from } = useLocalSearchParams<{ rideId: string; from?: string }>();
     const router = useRouter();
+    const goBack = () => router.push(from === 'my-rides' ? '/(tabs)/my-rides' : '/(tabs)/explore');
 
     const [state, setState] = useState<ScreenState>('loading');
     const [ride, setRide] = useState<Ride | null>(null);
@@ -158,7 +159,7 @@ export default function RideDetailsScreen() {
 
     // ─── Go back to home ──────────────────────────────────────────────────
     const handleDone = () => {
-        router.replace('/(tabs)/explore');
+        router.replace(from === 'my-rides' ? '/(tabs)/my-rides' : '/(tabs)/explore');
     };
 
     // ─── Loading state ────────────────────────────────────────────────────
@@ -166,7 +167,7 @@ export default function RideDetailsScreen() {
         return (
             <View style={ds.root}>
                 <View style={ds.centerContainer}>
-                    <ActivityIndicator size="large" color="#F37021" />
+                    <ActivityIndicator size="large" color="#C24E00" />
                     <Text style={{ fontSize: 14, color: '#888', marginTop: 8 }}>
                         Loading ride details…
                     </Text>
@@ -180,7 +181,7 @@ export default function RideDetailsScreen() {
         return (
             <View style={ds.root}>
                 <View style={ds.header}>
-                    <TouchableOpacity style={ds.backBtn} onPress={() => router.push('/(tabs)/explore')}>
+                    <TouchableOpacity style={ds.backBtn} onPress={goBack}>
                         <MaterialIcons name="arrow-back" size={22} color="#1a1a1a" />
                     </TouchableOpacity>
                     <Text style={ds.headerTitle}>Ride Details</Text>
@@ -190,7 +191,7 @@ export default function RideDetailsScreen() {
                     <Text style={ds.errorTitle}>Ride Unavailable</Text>
                     <Text style={ds.errorSub}>{errorMsg}</Text>
                     <TouchableOpacity style={ds.retryBtn} onPress={fetchRide}>
-                        <MaterialIcons name="refresh" size={16} color="#F37021" />
+                        <MaterialIcons name="refresh" size={16} color="#C24E00" />
                         <Text style={ds.retryBtnText}>Try Again</Text>
                     </TouchableOpacity>
                 </View>
@@ -217,7 +218,7 @@ export default function RideDetailsScreen() {
         <View style={ds.root}>
             {/* Header */}
             <View style={ds.header}>
-                <TouchableOpacity style={ds.backBtn} onPress={() => router.push('/(tabs)/explore')}>
+                <TouchableOpacity style={ds.backBtn} onPress={goBack}>
                     <MaterialIcons name="arrow-back" size={22} color="#1a1a1a" />
                 </TouchableOpacity>
                 <View style={{ flex: 1 }}>

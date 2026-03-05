@@ -1,4 +1,4 @@
-﻿import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,7 @@ import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import api, { deleteToken } from '../../services/api';
 
-// ── Explore sub-components ──────────────────────────────────────────────────
+// -- Explore sub-components --------------------------------------------------
 import {
   Ride,
   UserProfile,
@@ -168,12 +168,12 @@ export default function HomeScreen() {
   };
 
 
-  // ── Loading state ─────────────────────────────────────────────────────────
+  // -- Loading state ---------------------------------------------------------
   if (loading) {
     return (
       <View style={s.loadingContainer}>
         <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-        <ActivityIndicator size="large" color="#F37021" />
+        <ActivityIndicator size="large" color="#C24E00" />
         <Text style={s.loadingText}>Loading map...</Text>
       </View>
     );
@@ -189,7 +189,7 @@ export default function HomeScreen() {
     <View style={s.root}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      {/* ── Search Modal ────────────────────────────────────────────────── */}
+      {/* -- Search Modal -------------------------------------------------- */}
       <SearchModal
         visible={searchModalVisible}
         onClose={() => setSearchModalVisible(false)}
@@ -215,7 +215,7 @@ export default function HomeScreen() {
         searchResults={searchResults}
       />
 
-      {/* ── Location Picker ─────────────────────────────────────────────── */}
+      {/* -- Location Picker ----------------------------------------------- */}
       <LocationPickerModal
         visible={locPickerTarget !== null}
         target={locPickerTarget}
@@ -251,7 +251,7 @@ export default function HomeScreen() {
         />
       )}
 
-      {/* ── Full-Screen Map ────────────────────────────────────────────── */}
+      {/* -- Full-Screen Map ---------------------------------------------- */}
       <MapView
         style={StyleSheet.absoluteFill}
         provider={PROVIDER_DEFAULT}
@@ -275,7 +275,7 @@ export default function HomeScreen() {
         ))}
       </MapView>
 
-      {/* ── Top Identity Bar ───────────────────────────────────────────── */}
+      {/* -- Top Identity Bar --------------------------------------------- */}
       <TopIdentityBar
         profile={profile}
         trustScore={trustScore}
@@ -283,16 +283,16 @@ export default function HomeScreen() {
         isFaculty={isFaculty}
       />
 
-      {/* ── Floating "My Location" button ──────────────────────────────── */}
+      {/* -- Floating "My Location" button -------------------------------- */}
       <TouchableOpacity
         style={s.myLocationBtn}
         onPress={() => showAlert({ type: 'info', title: 'Location', message: 'Location tracking coming soon!' })}
         activeOpacity={0.8}
       >
-        <MaterialIcons name="my-location" size={22} color="#F37021" />
+        <MaterialIcons name="my-location" size={22} color="#C24E00" />
       </TouchableOpacity>
 
-      {/* ── Bottom Command Sheet ───────────────────────────────────────── */}
+      {/* -- Bottom Command Sheet ----------------------------------------- */}
       <BottomCommandSheet
         profile={profile}
         trustScore={trustScore}

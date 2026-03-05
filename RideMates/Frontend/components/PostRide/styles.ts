@@ -3,29 +3,28 @@ import { StyleSheet, Platform, StatusBar } from 'react-native';
 export const s = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#F5F0EB',
         paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
     },
     loadingContainer: {
         flex: 1, justifyContent: 'center', alignItems: 'center',
-        backgroundColor: '#f5f5f5', gap: 12,
+        backgroundColor: '#F5F0EB', gap: 12,
     },
-    loadingText: { fontSize: 14, color: '#888' },
+    loadingText: { fontSize: 14, color: '#6B5344' },
 
     // Header
     header: {
         flexDirection: 'row', alignItems: 'center',
         paddingHorizontal: 16, paddingVertical: 14,
-        // backgroundColor: '#fff',
-        borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
+        borderBottomWidth: 1, borderBottomColor: '#EAE0D8',
     },
     headerBackBtn: {
         width: 36, height: 36, borderRadius: 18,
-        backgroundColor: '#f5f5f5', alignItems: 'center', justifyContent: 'center',
+        backgroundColor: '#F5F0EB', alignItems: 'center', justifyContent: 'center',
     },
     headerTitle: {
         flex: 1, textAlign: 'center',
-        fontSize: 18, fontWeight: '800', color: '#1a1a1a',
+        fontSize: 18, fontWeight: '800', color: '#1E1610',
     },
 
     // Scrollview
@@ -45,41 +44,41 @@ export const s = StyleSheet.create({
     },
     sectionIconCircle: {
         width: 34, height: 34, borderRadius: 17,
-        backgroundColor: '#fff4eb', alignItems: 'center', justifyContent: 'center',
+        backgroundColor: '#FEF0E4', alignItems: 'center', justifyContent: 'center',
     },
-    sectionTitle: { fontSize: 16, fontWeight: '800', color: '#1a1a1a' },
+    sectionTitle: { fontSize: 16, fontWeight: '800', color: '#1E1610' },
 
     // Field label
     fieldLabel: {
-        fontSize: 11, fontWeight: '700', color: '#aaa',
+        fontSize: 11, fontWeight: '700', color: '#A8937F',
         letterSpacing: 0.6, marginBottom: 6, marginTop: 14,
     },
 
     // Location field
     locationField: {
         flexDirection: 'row', alignItems: 'center', gap: 12,
-        backgroundColor: '#fafafa', borderRadius: 14,
-        padding: 14, borderWidth: 1, borderColor: '#f0f0f0',
+        backgroundColor: '#FAF7F4', borderRadius: 14,
+        padding: 14, borderWidth: 1, borderColor: '#EAE0D8',
     },
     originDot: {
         width: 12, height: 12, borderRadius: 6,
-        backgroundColor: '#1a1a1a',
+        backgroundColor: '#1E1610',
     },
     destDot: {
         width: 12, height: 12, borderRadius: 3,
-        backgroundColor: '#F37021',
+        backgroundColor: '#C24E00',
     },
-    locationText: { flex: 1, fontSize: 15, fontWeight: '700', color: '#1a1a1a' },
-    locationPlaceholder: { flex: 1, fontSize: 15, fontWeight: '500', color: '#bbb' },
+    locationText: { flex: 1, fontSize: 15, fontWeight: '700', color: '#1E1610' },
+    locationPlaceholder: { flex: 1, fontSize: 15, fontWeight: '500', color: '#A8937F' },
 
     // Distance badge
     distanceBadge: {
         flexDirection: 'row', alignItems: 'center', gap: 6,
-        backgroundColor: '#fff4eb', borderRadius: 12,
+        backgroundColor: '#FEF0E4', borderRadius: 12,
         paddingHorizontal: 12, paddingVertical: 8, marginTop: 12,
         alignSelf: 'flex-start',
     },
-    distanceText: { fontSize: 13, fontWeight: '700', color: '#F37021' },
+    distanceText: { fontSize: 13, fontWeight: '700', color: '#C24E00' },
 
     // Date time row
     dateTimeRow: {
@@ -87,20 +86,20 @@ export const s = StyleSheet.create({
     },
     dateTimeBtn: {
         flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8,
-        backgroundColor: '#fafafa', borderRadius: 14,
-        padding: 14, borderWidth: 1, borderColor: '#f0f0f0',
+        backgroundColor: '#FAF7F4', borderRadius: 14,
+        padding: 14, borderWidth: 1, borderColor: '#EAE0D8',
     },
-    dateTimeBtnText: { fontSize: 14, fontWeight: '600', color: '#1a1a1a' },
+    dateTimeBtnText: { fontSize: 14, fontWeight: '600', color: '#1E1610' },
 
     // Toggle row
     toggleRow: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        backgroundColor: '#fafafa', borderRadius: 14, padding: 14, marginTop: 14,
-        borderWidth: 1, borderColor: '#f0f0f0',
+        backgroundColor: '#FAF7F4', borderRadius: 14, padding: 14, marginTop: 14,
+        borderWidth: 1, borderColor: '#EAE0D8',
     },
     toggleLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-    toggleTitle: { fontSize: 13, fontWeight: '700', color: '#1a1a1a' },
-    toggleSub: { fontSize: 10, color: '#aaa', marginTop: 1 },
+    toggleTitle: { fontSize: 13, fontWeight: '700', color: '#1E1610' },
+    toggleSub: { fontSize: 10, color: '#A8937F', marginTop: 1 },
 
     // Segmented picker
     segmentedRow: {
@@ -109,12 +108,12 @@ export const s = StyleSheet.create({
     segmentBtn: {
         flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
         paddingVertical: 14, borderRadius: 14,
-        backgroundColor: '#f5f5f5', borderWidth: 1, borderColor: '#ececec',
+        backgroundColor: '#F5F0EB', borderWidth: 1, borderColor: '#EAE0D8',
     },
     segmentBtnActive: {
-        backgroundColor: '#F37021', borderColor: '#F37021',
+        backgroundColor: '#C24E00', borderColor: '#C24E00',
     },
-    segmentLabel: { fontSize: 14, fontWeight: '700', color: '#666' },
+    segmentLabel: { fontSize: 14, fontWeight: '700', color: '#6B5344' },
     segmentLabelActive: { color: '#fff' },
 
     // Stepper
@@ -124,77 +123,77 @@ export const s = StyleSheet.create({
     },
     stepperBtn: {
         width: 40, height: 40, borderRadius: 20,
-        backgroundColor: '#f5f5f5', alignItems: 'center', justifyContent: 'center',
-        borderWidth: 1, borderColor: '#ececec',
+        backgroundColor: '#F5F0EB', alignItems: 'center', justifyContent: 'center',
+        borderWidth: 1, borderColor: '#EAE0D8',
     },
     stepperValueBox: {
         flexDirection: 'row', alignItems: 'center', gap: 6,
     },
-    stepperValue: { fontSize: 22, fontWeight: '800', color: '#1a1a1a' },
+    stepperValue: { fontSize: 22, fontWeight: '800', color: '#1E1610' },
 
     // Mileage input
     inputRow: {
         flexDirection: 'row', alignItems: 'center', gap: 10,
-        backgroundColor: '#fafafa', borderRadius: 14,
-        padding: 14, borderWidth: 1, borderColor: '#f0f0f0',
+        backgroundColor: '#FAF7F4', borderRadius: 14,
+        padding: 14, borderWidth: 1, borderColor: '#EAE0D8',
     },
     textInput: {
-        flex: 1, fontSize: 15, fontWeight: '600', color: '#1a1a1a', padding: 0,
+        flex: 1, fontSize: 15, fontWeight: '600', color: '#1E1610', padding: 0,
     },
-    inputSuffix: { fontSize: 12, fontWeight: '600', color: '#aaa' },
+    inputSuffix: { fontSize: 12, fontWeight: '600', color: '#A8937F' },
 
     // Chips (fuel type)
     chipsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
     chip: {
         paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20,
-        backgroundColor: '#f5f5f5', borderWidth: 1, borderColor: '#ececec',
+        backgroundColor: '#F5F0EB', borderWidth: 1, borderColor: '#EAE0D8',
     },
-    chipActive: { backgroundColor: '#F37021', borderColor: '#F37021' },
-    chipText: { fontSize: 13, fontWeight: '600', color: '#666' },
+    chipActive: { backgroundColor: '#C24E00', borderColor: '#C24E00' },
+    chipText: { fontSize: 13, fontWeight: '600', color: '#6B5344' },
     chipTextActive: { color: '#fff' },
 
     // Price breakdown
     priceBreakdown: {
-        backgroundColor: '#fafafa', borderRadius: 14, padding: 14,
-        borderWidth: 1, borderColor: '#f0f0f0', gap: 8,
+        backgroundColor: '#FAF7F4', borderRadius: 14, padding: 14,
+        borderWidth: 1, borderColor: '#EAE0D8', gap: 8,
     },
     priceRow: {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     },
     priceRowHighlight: {
-        borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 8, marginTop: 4,
+        borderTopWidth: 1, borderTopColor: '#EAE0D8', paddingTop: 8, marginTop: 4,
     },
-    priceLabel: { fontSize: 13, color: '#888' },
-    priceValue: { fontSize: 13, fontWeight: '600', color: '#555' },
-    priceLabelBold: { fontSize: 14, fontWeight: '700', color: '#1a1a1a' },
-    priceValueBold: { fontSize: 14, fontWeight: '800', color: '#F37021' },
+    priceLabel: { fontSize: 13, color: '#6B5344' },
+    priceValue: { fontSize: 13, fontWeight: '600', color: '#6B5344' },
+    priceLabelBold: { fontSize: 14, fontWeight: '700', color: '#1E1610' },
+    priceValueBold: { fontSize: 14, fontWeight: '800', color: '#C24E00' },
 
     // Slider
     sliderContainer: {
         flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4,
     },
     slider: { flex: 1, height: 40 },
-    sliderMin: { fontSize: 11, fontWeight: '600', color: '#bbb' },
-    sliderMax: { fontSize: 11, fontWeight: '600', color: '#bbb' },
+    sliderMin: { fontSize: 11, fontWeight: '600', color: '#A8937F' },
+    sliderMax: { fontSize: 11, fontWeight: '600', color: '#A8937F' },
     sliderValueRow: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
         marginTop: 4,
     },
-    sliderCurrentLabel: { fontSize: 14, color: '#888' },
+    sliderCurrentLabel: { fontSize: 14, color: '#6B5344' },
     sliderCurrentValue: {
-        fontSize: 24, fontWeight: '800', color: '#F37021',
+        fontSize: 24, fontWeight: '800', color: '#C24E00',
     },
     perSeatNote: {
-        textAlign: 'center', fontSize: 12, color: '#888', marginTop: 4,
+        textAlign: 'center', fontSize: 12, color: '#6B5344', marginTop: 4,
     },
 
     // Price placeholder
     pricePlaceholder: {
         flexDirection: 'row', alignItems: 'center', gap: 8,
-        backgroundColor: '#fafafa', borderRadius: 14, padding: 20,
-        borderWidth: 1, borderColor: '#f0f0f0',
+        backgroundColor: '#FAF7F4', borderRadius: 14, padding: 20,
+        borderWidth: 1, borderColor: '#EAE0D8',
     },
-    pricePlaceholderText: { fontSize: 13, color: '#bbb', flex: 1 },
+    pricePlaceholderText: { fontSize: 13, color: '#A8937F', flex: 1 },
 
     // Acknowledgment checkbox
     ackRow: {
@@ -203,22 +202,22 @@ export const s = StyleSheet.create({
         borderWidth: 1, borderColor: '#bbdefb',
     },
     ackRowChecked: { backgroundColor: '#e3f2fd', borderColor: '#1976d2' },
-    ackText: { fontSize: 12, color: '#1a1a1a', flex: 1, lineHeight: 18 },
+    ackText: { fontSize: 12, color: '#1E1610', flex: 1, lineHeight: 18 },
 
     // Publish button
     publishBarWrap: {
         position: 'absolute', bottom: 0, left: 0, right: 0,
         backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 12,
         paddingBottom: Platform.OS === 'ios' ? 34 : 16,
-        borderTopWidth: 1, borderTopColor: '#f0f0f0',
+        borderTopWidth: 1, borderTopColor: '#EAE0D8',
     },
     publishBtn: {
-        backgroundColor: '#F37021', borderRadius: 16, height: 54,
+        backgroundColor: '#C24E00', borderRadius: 16, height: 54,
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-        elevation: 4, shadowColor: '#F37021',
+        elevation: 4, shadowColor: '#C24E00',
         shadowOpacity: 0.35, shadowRadius: 8, shadowOffset: { width: 0, height: 4 },
     },
-    publishBtnDisabled: { backgroundColor: '#ccc', elevation: 0, shadowOpacity: 0 },
+    publishBtnDisabled: { backgroundColor: '#EAE0D8', elevation: 0, shadowOpacity: 0 },
     publishBtnText: { fontSize: 16, fontWeight: '800', color: '#fff' },
 
     // Location picker modal
@@ -226,29 +225,29 @@ export const s = StyleSheet.create({
     locPickerHeader: {
         flexDirection: 'row', alignItems: 'center', gap: 12,
         paddingHorizontal: 16, paddingVertical: 14,
-        borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
+        borderBottomWidth: 1, borderBottomColor: '#EAE0D8',
     },
     locPickerBackBtn: {
         width: 36, height: 36, borderRadius: 18,
-        backgroundColor: '#f5f5f5', alignItems: 'center', justifyContent: 'center',
+        backgroundColor: '#F5F0EB', alignItems: 'center', justifyContent: 'center',
     },
-    locPickerTitle: { fontSize: 18, fontWeight: '800', color: '#1a1a1a' },
+    locPickerTitle: { fontSize: 18, fontWeight: '800', color: '#1E1610' },
     locPickerSearchBar: {
         flexDirection: 'row', alignItems: 'center', gap: 10,
         marginHorizontal: 16, marginVertical: 12,
-        backgroundColor: '#f5f5f5', borderRadius: 14,
+        backgroundColor: '#F5F0EB', borderRadius: 14,
         paddingHorizontal: 14, paddingVertical: 10,
     },
-    locPickerInput: { flex: 1, fontSize: 15, fontWeight: '500', color: '#1a1a1a', padding: 0 },
+    locPickerInput: { flex: 1, fontSize: 15, fontWeight: '500', color: '#1E1610', padding: 0 },
     locPickerItem: {
         flexDirection: 'row', alignItems: 'center', gap: 14,
         paddingHorizontal: 16, paddingVertical: 14,
-        borderBottomWidth: 1, borderBottomColor: '#f8f8f8',
+        borderBottomWidth: 1, borderBottomColor: '#FAF7F4',
     },
     locPickerIcon: {
         width: 40, height: 40, borderRadius: 20,
-        backgroundColor: '#fff4eb', alignItems: 'center', justifyContent: 'center',
+        backgroundColor: '#FEF0E4', alignItems: 'center', justifyContent: 'center',
     },
-    locPickerItemLabel: { fontSize: 15, fontWeight: '700', color: '#1a1a1a' },
-    locPickerItemSub: { fontSize: 12, color: '#aaa', marginTop: 1 },
+    locPickerItemLabel: { fontSize: 15, fontWeight: '700', color: '#1E1610' },
+    locPickerItemSub: { fontSize: 12, color: '#A8937F', marginTop: 1 },
 });

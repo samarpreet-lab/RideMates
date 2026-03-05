@@ -54,7 +54,7 @@ export default function MyRideCard({ ride, viewMode, onCancelBooking }: MyRideCa
     const handlePress = () => {
         router.push({
             pathname: '/(tabs)/ride-details',
-            params: { rideId: String(ride.id) },
+            params: { rideId: String(ride.id), from: 'my-rides' },
         });
     };
 
@@ -99,6 +99,16 @@ export default function MyRideCard({ ride, viewMode, onCancelBooking }: MyRideCa
                 </Text>
             </View>
 
+            {/* Booked Banner — shown on driver's published rides that have bookings */}
+            {viewMode === 'driver' && Number(ride.booking_count) > 0 && (
+                <View style={s.bookedBanner}>
+                    <MaterialIcons name="people" size={16} color="#059669" />
+                    <Text style={s.bookedBannerText}>
+                        🎉 {ride.booking_count} Booked{Number(ride.booking_count) !== 1 ? 's' : ''}
+                    </Text>
+                </View>
+            )}
+
             {/* Driver Info or Passenger overview */}
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
                 <MaterialIcons name="person" size={16} color="#aaa" style={{ marginRight: 6 }} />
@@ -132,7 +142,7 @@ export default function MyRideCard({ ride, viewMode, onCancelBooking }: MyRideCa
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
                     <Text style={s.metaLabel}>{viewMode === 'passenger' ? 'Amount Paid' : 'Total Revenue (Est)'}</Text>
-                    <Text style={[s.metaValue, { color: '#F37021' }]}>
+                    <Text style={[s.metaValue, { color: '#C24E00' }]}>
                         ₹{viewMode === 'passenger' ? ride.price_paid : (ride.capped_price)}
                     </Text>
                 </View>

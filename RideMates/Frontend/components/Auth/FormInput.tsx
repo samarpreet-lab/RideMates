@@ -70,7 +70,7 @@ export default function FormInput({
           <MaterialIcons
             name={iconName}
             size={20}
-            color="#ff8c42"
+            color="#C24E00"
             style={s.inputIconMaterial}
           />
         )}

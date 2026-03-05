@@ -24,7 +24,7 @@ export default function VehicleSection({
         <View style={s.sectionCard}>
             <View style={s.sectionHeader}>
                 <View style={s.sectionIconCircle}>
-                    <MaterialIcons name="directions-car" size={18} color="#F37021" />
+                    <MaterialIcons name="directions-car" size={18} color="#C24E00" />
                 </View>
                 <Text style={s.sectionTitle}>Vehicle & Capacity</Text>
             </View>
@@ -63,7 +63,7 @@ export default function VehicleSection({
                     <MaterialIcons name="remove" size={20} color={seats <= 1 ? '#ddd' : '#333'} />
                 </TouchableOpacity>
                 <View style={s.stepperValueBox}>
-                    <MaterialIcons name="event-seat" size={16} color="#F37021" />
+                    <MaterialIcons name="event-seat" size={16} color="#C24E00" />
                     <Text style={s.stepperValue}>{seats}</Text>
                 </View>
                 <TouchableOpacity
@@ -79,7 +79,7 @@ export default function VehicleSection({
             {/* Mileage */}
             <Text style={s.fieldLabel}>VEHICLE MILEAGE (km/L)</Text>
             <View style={s.inputRow}>
-                <MaterialIcons name="speed" size={18} color="#F37021" />
+                <MaterialIcons name="speed" size={18} color="#C24E00" />
                 <TextInput
                     style={s.textInput}
                     keyboardType="numeric"

@@ -208,7 +208,7 @@ function SearchForm({
         <View style={s.swapRow}>
           <View style={s.routeDividerLine} />
           <TouchableOpacity style={s.swapBtn} activeOpacity={0.7} onPress={onSwapRoute}>
-            <MaterialIcons name="swap-vert" size={20} color="#F37021" />
+            <MaterialIcons name="swap-vert" size={20} color="#C24E00" />
           </TouchableOpacity>
         </View>
 
@@ -313,7 +313,7 @@ function SearchForm({
               <MaterialIcons
                 name={d.id === 'pick' ? 'calendar-today' : 'event'}
                 size={14}
-                color={selectedDate === d.id ? '#fff' : '#F37021'}
+                color={selectedDate === d.id ? '#fff' : '#C24E00'}
               />
               <Text style={[s.dateChipText, selectedDate === d.id && s.dateChipTextActive]}>
                 {chipLabel}
@@ -399,7 +399,7 @@ function SearchResults({
           <Text style={s.resultsSummaryText} numberOfLines={1}>{destination}</Text>
         </View>
         <TouchableOpacity style={s.resultsEditBtn} onPress={onEditSearch} activeOpacity={0.7}>
-          <MaterialIcons name="edit" size={14} color="#F37021" />
+          <MaterialIcons name="edit" size={14} color="#C24E00" />
         </TouchableOpacity>
       </View>
 
@@ -412,7 +412,7 @@ function SearchResults({
             {'\n'}Try a different date or check back later.
           </Text>
           <TouchableOpacity style={s.emptyStateBtn} onPress={onEditSearch} activeOpacity={0.8}>
-            <MaterialIcons name="refresh" size={16} color="#F37021" />
+            <MaterialIcons name="refresh" size={16} color="#C24E00" />
             <Text style={s.emptyStateBtnText}>Modify Search</Text>
           </TouchableOpacity>
         </View>

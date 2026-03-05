@@ -70,7 +70,7 @@ export default function OtpStep({
       </View>
 
       <View style={s.warningContainer}>
-        <MaterialIcons name="info" size={16} color="#ff8c42" />
+        <MaterialIcons name="info" size={16} color="#C24E00" />
         <Text style={s.warningText}>
           OTP will expire in <Text style={s.warningBold}>10 minutes</Text>
         </Text>

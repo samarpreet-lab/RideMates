@@ -232,7 +232,7 @@ export default function PostRideScreen() {
     return (
       <View style={s.loadingContainer}>
         <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-        <ActivityIndicator size="large" color="#F37021" />
+        <ActivityIndicator size="large" color="#C24E00" />
         <Text style={s.loadingText}>Loading...</Text>
       </View>
     );

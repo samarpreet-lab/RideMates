@@ -36,7 +36,7 @@ export default function PricingSection({
         <View style={s.sectionCard}>
             <View style={s.sectionHeader}>
                 <View style={s.sectionIconCircle}>
-                    <MaterialIcons name="currency-rupee" size={18} color="#F37021" />
+                    <MaterialIcons name="currency-rupee" size={18} color="#C24E00" />
                 </View>
                 <Text style={s.sectionTitle}>Pricing & Rules</Text>
             </View>
@@ -72,9 +72,9 @@ export default function PricingSection({
                             step={5}
                             value={driverPrice}
                             onValueChange={setDriverPrice}
-                            minimumTrackTintColor="#F37021"
+                            minimumTrackTintColor="#C24E00"
                             maximumTrackTintColor="#e0e0e0"
-                            thumbTintColor="#F37021"
+                            thumbTintColor="#C24E00"
                         />
                         <Text style={s.sliderMax}>₹{maxAllowed}</Text>
                     </View>

@@ -56,7 +56,7 @@ export default function PassengerList({ passengers }: Props) {
                     PASSENGERS ({totalSeats} seat{totalSeats > 1 ? 's' : ''} booked)
                 </Text>
                 <View style={{ backgroundColor: '#fff4eb', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#F37021' }}>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#C24E00' }}>
                         {passengers.length} {passengers.length === 1 ? 'person' : 'people'}
                     </Text>
                 </View>
@@ -70,7 +70,7 @@ export default function PassengerList({ passengers }: Props) {
                         {/* Avatar */}
                         <View style={{
                             width: 42, height: 42, borderRadius: 21,
-                            backgroundColor: '#F37021', alignItems: 'center', justifyContent: 'center',
+                            backgroundColor: '#C24E00', alignItems: 'center', justifyContent: 'center',
                             marginRight: 12,
                         }}>
                             <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff' }}>
@@ -93,7 +93,7 @@ export default function PassengerList({ passengers }: Props) {
                                     {p.passenger_trust_score}★
                                 </Text>
                                 <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: '#ddd' }} />
-                                <Text style={{ fontSize: 12, fontWeight: '700', color: '#F37021' }}>
+                                <Text style={{ fontSize: 12, fontWeight: '700', color: '#C24E00' }}>
                                     ₹{Number(p.price_paid).toFixed(0)}
                                 </Text>
                             </View>
@@ -110,7 +110,7 @@ export default function PassengerList({ passengers }: Props) {
                                         borderWidth: 1, borderColor: '#ffe0c4',
                                     }}
                                 >
-                                    <MaterialIcons name="chat" size={16} color="#F37021" />
+                                    <MaterialIcons name="chat" size={16} color="#C24E00" />
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     onPress={() => handleCall(p.passenger_phone!)}
@@ -120,7 +120,7 @@ export default function PassengerList({ passengers }: Props) {
                                         borderWidth: 1, borderColor: '#ffe0c4',
                                     }}
                                 >
-                                    <MaterialIcons name="call" size={16} color="#F37021" />
+                                    <MaterialIcons name="call" size={16} color="#C24E00" />
                                 </TouchableOpacity>
                             </View>
                         )}

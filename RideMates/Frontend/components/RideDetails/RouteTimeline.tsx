@@ -43,7 +43,7 @@ export default function RouteTimeline({ ride }: Props) {
 
             {/* Departure time */}
             <View style={ds.departureRow}>
-                <MaterialIcons name="schedule" size={18} color="#F37021" />
+                <MaterialIcons name="schedule" size={18} color="#C24E00" />
                 <Text style={ds.departureText}>
                     {formatDepartureTime(ride.departure_time)}
                 </Text>
