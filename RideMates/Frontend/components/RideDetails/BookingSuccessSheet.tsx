@@ -48,7 +48,7 @@ export default function BookingSuccessSheet({ ride, booking, onDone }: Props) {
                 {/* Success Header */}
                 <View style={ds.successTop}>
                     <View style={ds.successIconWrap}>
-                        <MaterialIcons name="check-circle" size={44} color="#22c55e" />
+                        <MaterialIcons name="check-circle" size={44} color="#F37021" />
                     </View>
                     <Text style={ds.successTitle}>Seat Booked!</Text>
                     <Text style={ds.successSub}>
@@ -103,7 +103,7 @@ export default function BookingSuccessSheet({ ride, booking, onDone }: Props) {
                                 onPress={handleWhatsApp}
                                 activeOpacity={0.8}
                             >
-                                <MaterialIcons name="chat" size={18} color="#22c55e" />
+                                <MaterialIcons name="chat" size={18} color="#F37021" />
                                 <Text style={ds.whatsappBtnText}>WhatsApp</Text>
                             </TouchableOpacity>
 
@@ -112,7 +112,7 @@ export default function BookingSuccessSheet({ ride, booking, onDone }: Props) {
                                 onPress={handleCall}
                                 activeOpacity={0.8}
                             >
-                                <MaterialIcons name="call" size={18} color="#3b82f6" />
+                                <MaterialIcons name="call" size={18} color="#F37021" />
                                 <Text style={ds.callBtnText}>Call</Text>
                             </TouchableOpacity>
                         </View>

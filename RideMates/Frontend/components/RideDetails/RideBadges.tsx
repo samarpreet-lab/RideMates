@@ -24,7 +24,7 @@ export default function RideBadges({ ride }: Props) {
             </View>
 
             {/* Emergency Route */}
-            {ride.is_emergency_route && (
+            {!!ride.is_emergency_route && (
                 <View style={[ds.badge, ds.emergencyBadge]}>
                     <MaterialIcons name="warning" size={14} color="#f59e0b" />
                     <Text style={[ds.badgeText, ds.emergencyText]}>Alternate Route</Text>
@@ -32,7 +32,7 @@ export default function RideBadges({ ride }: Props) {
             )}
 
             {/* Women Only */}
-            {ride.is_women_only && (
+            {!!ride.is_women_only && (
                 <View style={[ds.badge, ds.womenBadge]}>
                     <MaterialIcons name="female" size={14} color="#db2777" />
                     <Text style={[ds.badgeText, ds.womenText]}>Women Only</Text>
@@ -40,7 +40,7 @@ export default function RideBadges({ ride }: Props) {
             )}
 
             {/* Instant Booking */}
-            {ride.instant_booking && (
+            {!!ride.instant_booking && (
                 <View style={[ds.badge, ds.instantBadge]}>
                     <MaterialIcons name="bolt" size={14} color="#059669" />
                     <Text style={[ds.badgeText, ds.instantText]}>Instant Book</Text>
@@ -48,10 +48,12 @@ export default function RideBadges({ ride }: Props) {
             )}
 
             {/* Fuel type */}
-            <View style={[ds.badge, ds.fuelBadge]}>
-                <MaterialIcons name="local-gas-station" size={14} color="#888" />
-                <Text style={[ds.badgeText, ds.fuelText]}>{ride.fuel_type}</Text>
-            </View>
+            {!!ride.fuel_type && (
+                <View style={[ds.badge, ds.fuelBadge]}>
+                    <MaterialIcons name="local-gas-station" size={14} color="#888" />
+                    <Text style={[ds.badgeText, ds.fuelText]}>{ride.fuel_type}</Text>
+                </View>
+            )}
         </View>
     );
 }

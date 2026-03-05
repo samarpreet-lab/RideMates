@@ -241,9 +241,27 @@ async function getRideById(req, res) {
       });
     }
 
+    const rideData = rides[0];
+
+    // If the requesting user is the driver, include passenger booking info
+    if (req.user && req.user.id === rideData.driver_id) {
+      const [passengers] = await pool.query(
+        `SELECT b.id AS booking_id, b.seats_booked, b.price_paid, b.status AS booking_status,
+                pu.id AS passenger_id, pu.full_name AS passenger_name,
+                pu.email AS passenger_email, pu.phone AS passenger_phone,
+                pu.trust_score AS passenger_trust_score
+         FROM bookings b
+         JOIN users pu ON b.passenger_id = pu.id
+         WHERE b.ride_id = ? AND b.status IN ('confirmed', 'completed')
+         ORDER BY b.booked_at ASC`,
+        [rideId]
+      );
+      rideData.passengers = passengers;
+    }
+
     res.status(200).json({
       success: true,
-      data: rides[0],
+      data: rideData,
     });
   } catch (error) {
     console.error('Error in getRideById:', error);
@@ -529,7 +547,9 @@ async function getMyRides(req, res) {
 
     // --- Rides I posted as a driver ---
     const [postedRides] = await pool.query(
-      `SELECT r.*, 'driver' AS my_role
+      `SELECT r.*, 'driver' AS my_role,
+              (SELECT COUNT(*) FROM bookings b
+               WHERE b.ride_id = r.id AND b.status IN ('confirmed', 'completed')) AS booking_count
        FROM rides r
        WHERE r.driver_id = ?
        ORDER BY r.departure_time DESC`,
@@ -538,7 +558,7 @@ async function getMyRides(req, res) {
 
     // --- Rides I booked as a passenger ---
     const [bookedRides] = await pool.query(
-      `SELECT r.*, b.seats_booked, b.price_paid, b.status AS booking_status,
+      `SELECT r.*, b.id AS booking_id, b.seats_booked, b.price_paid, b.status AS booking_status,
               'passenger' AS my_role,
               u.full_name AS driver_name
        FROM bookings b

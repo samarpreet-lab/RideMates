@@ -115,6 +115,17 @@ export interface Ride {
   driver_trust_score: number;
   completed_at: string | null;
   created_at: string;
+  passengers?: Array<{
+    booking_id: number;
+    passenger_id: number;
+    passenger_name: string;
+    passenger_email: string;
+    passenger_phone: string | null;
+    passenger_trust_score: number;
+    seats_booked: number;
+    price_paid: number;
+    booking_status: string;
+  }>;
 }
 
 // ─── Helper Functions ──────────────────────────────────────────────────────

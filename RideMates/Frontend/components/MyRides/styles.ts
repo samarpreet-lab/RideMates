@@ -131,4 +131,23 @@ export const s = StyleSheet.create({
     },
     metaLabel: { fontSize: 11, color: '#888', fontWeight: '600' },
     metaValue: { fontSize: 13, color: '#1a1a1a', fontWeight: '800' },
+
+    // Cancel Booking button (passenger cards)
+    cancelBookingBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        marginTop: 14,
+        paddingVertical: 10,
+        borderRadius: 12,
+        backgroundColor: '#fee2e2',
+        borderWidth: 1,
+        borderColor: '#fca5a5',
+    },
+    cancelBookingBtnText: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#ef4444',
+    },
 });

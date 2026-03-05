@@ -126,17 +126,35 @@ async function bookSeat(req, res) {
       (parseFloat(ride.capped_price) / ride.available_seats) * seatsRequested * 100
     ) / 100;
 
-    // --- Step 4: Decrement seats + insert booking atomically ---
+    // --- Step 4: Decrement seats + create/reactivate booking atomically ---
     await connection.query(
       'UPDATE rides SET available_seats = available_seats - ? WHERE id = ?',
       [seatsRequested, ride_id]
     );
 
-    const [bookingResult] = await connection.query(
-      `INSERT INTO bookings (ride_id, passenger_id, seats_booked, price_paid)
-       VALUES (?, ?, ?, ?)`,
-      [ride_id, passenger_id, seatsRequested, price_paid]
+    // Check if there's a previously cancelled booking for this passenger+ride
+    const [existingBooking] = await connection.query(
+      `SELECT id FROM bookings WHERE ride_id = ? AND passenger_id = ? AND status = 'cancelled'`,
+      [ride_id, passenger_id]
     );
+
+    let bookingId;
+    if (existingBooking.length > 0) {
+      // Reactivate the cancelled booking
+      bookingId = existingBooking[0].id;
+      await connection.query(
+        `UPDATE bookings SET status = 'confirmed', seats_booked = ?, price_paid = ?, cancellation_penalty = 0 WHERE id = ?`,
+        [seatsRequested, price_paid, bookingId]
+      );
+    } else {
+      // Insert a fresh booking
+      const [bookingResult] = await connection.query(
+        `INSERT INTO bookings (ride_id, passenger_id, seats_booked, price_paid)
+         VALUES (?, ?, ?, ?)`,
+        [ride_id, passenger_id, seatsRequested, price_paid]
+      );
+      bookingId = bookingResult.insertId;
+    }
 
     // --- Step 5: Commit — both changes become permanent ---
     await connection.commit();
@@ -145,7 +163,7 @@ async function bookSeat(req, res) {
       success: true,
       message: 'Seat booked successfully!',
       data: {
-        booking_id: bookingResult.insertId,
+        booking_id: bookingId,
         ride_id: parseInt(ride_id),
         seats_booked: seatsRequested,
         price_paid,

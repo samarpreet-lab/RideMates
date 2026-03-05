@@ -75,6 +75,7 @@ export default function EditRideModal({ visible, ride, onClose, onSave }: EditRi
             <View style={ds.modalOverlay}>
                 <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    style={{ width: '100%', justifyContent: 'flex-end', flex: 1 }}
                 >
                     <View style={ds.modalContent}>
                         <View style={ds.modalHeader}>

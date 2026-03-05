@@ -414,6 +414,21 @@ async function verifyOtp(req, res) {
       }
 
       try {
+        // --- Check for duplicate phone number ---
+        if (phone) {
+          const [phoneCheck] = await pool.query(
+            'SELECT id FROM users WHERE phone = ?',
+            [phone]
+          );
+          if (phoneCheck.length > 0) {
+            return res.status(409).json({
+              success: false,
+              message: 'This phone number is already linked to another account.',
+              error: 'DUPLICATE_PHONE',
+            });
+          }
+        }
+
         const [result] = await pool.query(
           `INSERT INTO users (full_name, email, phone, role, gender)
            VALUES (?, ?, ?, ?, ?)`,
@@ -554,6 +569,20 @@ async function updateProfile(req, res) {
       values.push(full_name);
     }
     if (phone !== undefined) {
+      // --- Check for duplicate phone number (exclude current user) ---
+      if (phone) {
+        const [phoneCheck] = await pool.query(
+          'SELECT id FROM users WHERE phone = ? AND id != ?',
+          [phone, req.user.id]
+        );
+        if (phoneCheck.length > 0) {
+          return res.status(409).json({
+            success: false,
+            message: 'This phone number is already linked to another account.',
+            error: 'DUPLICATE_PHONE',
+          });
+        }
+      }
       updates.push('phone = ?');
       values.push(phone);
     }

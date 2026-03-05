@@ -32,6 +32,7 @@ import RideBadges from '../../components/RideDetails/RideBadges';
 import SeatSelector from '../../components/RideDetails/SeatSelector';
 import BookingSuccessSheet from '../../components/RideDetails/BookingSuccessSheet';
 import EditRideModal from '../../components/RideDetails/EditRideModal';
+import PassengerList from '../../components/RideDetails/PassengerList';
 
 type ScreenState = 'loading' | 'detail' | 'error' | 'success';
 
@@ -233,6 +234,9 @@ export default function RideDetailsScreen() {
                 <RouteTimeline ride={ride} />
                 <RideBadges ride={ride} />
                 <PriceBreakdown ride={ride} seatsSelected={seatsSelected} />
+                {isDriver && ride.passengers && ride.passengers.length > 0 && (
+                    <PassengerList passengers={ride.passengers} />
+                )}
                 {canBook && !isDriver && (
                     <SeatSelector
                         seats={seatsSelected}
