@@ -78,6 +78,7 @@
    - 9.1 [Screen Inventory](#91-screen-inventory)
    - 9.2 [Screen Flow](#92-screen-flow)
    - 9.3 [UI Component Specifications](#93-ui-component-specifications)
+   - 9.4 [Design System & Branding](#94-design-system--branding)
 10. [Appendices](#10-appendices)
     - 10.1 [Appendix A — Glossary of Domain Terms](#101-appendix-a--glossary-of-domain-terms)
     - 10.2 [Appendix B — Error Code Reference](#102-appendix-b--error-code-reference)
@@ -1817,6 +1818,37 @@ Scenario 3 — Expired OTP:
 | **Content** | Reason selector (dropdown: No-Show, Bad Conduct, Unsafe Driving, Harassment), optional free-text description (max 500 chars), and "Submit Report" button |
 | **Confirmation** | After submission, display a confirmation: "Report submitted. Our system will review the pattern." |
 | **Cooldown Indicator** | If the user has filed 3 reports in 24 hours, the button SHALL be disabled with tooltip: "You have reached the daily report limit." |
+
+### 9.4 Design System & Branding
+
+The application follows the **LPU Orange & Gold** design system to ensure a cohesive university identity. The design relies on a warm, earthy palette rather than cold grays for neutralls, creating a premium and welcoming interface.
+
+#### Color Palette
+
+**Primary Colors (LPU Orange):**
+- **Primary Brand Color (`--orange-700`):** `#C24E00` (Used for primary buttons, active states, key icons)
+- **Primary Hover/Active (`--orange-800`):** `#A33D00` (Used for pressed states)
+- **Light Orange Accents (`--orange-100` / `--orange-200`):** `#FEF0E4` / `#FCDCBF` (Used for soft backgrounds, notification badges, active tags)
+- **Deep Contrast (`--orange-950`):** `#4A1A00`
+
+**Secondary Colors (Gold):**
+- **Secondary Branding (`--gold-500` / `--gold-400`):** `#C49A1A` / `#D9AF2E` (Used for warning states, secondary highlights)
+
+**Warm Neutrals (Replacing standard grays/blacks):**
+- **Primary Text (`--n-950`):** `#1E1610` (Replaces `#000` and `#1a1a1a`)
+- **Secondary Text/Icons (`--n-800` / `--n-600`):** `#3D2F22` / `#6B5344`
+- **Subtle Text/Placeholders (`--n-400`):** `#A8937F`
+- **Borders/Dividers (`--n-200`):** `#EAE0D8`
+- **App Background (`--n-100` / `--n-50`):** `#F5F0EB` / `#FAF7F4` (Replaces standard `#f5f5f5` app backgrounds)
+
+#### Status Colors
+- **Success:** Background `#F2FAF5`, Text/Border `#3DAA6E`
+- **Warning:** Background `#FEFDF2`, Text/Border `#D4960F`
+- **Error:** Background `#FFF6F5`, Text/Border `#D9622A`
+
+#### Typography
+- **Headings & Brand Title:** `Playfair Display` (Weights 600, 700)
+- **Body & Interface Text:** `DM Sans` (Weights 300, 400, 500, 600)
 
 ---
 
