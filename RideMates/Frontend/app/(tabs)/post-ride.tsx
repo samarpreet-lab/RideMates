@@ -54,7 +54,7 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
 }
 
 function round2(n: number): number {
-  return Math.round(n * 100) / 100;
+  return Math.round(n);
 }
 
 export default function PostRideScreen() {
@@ -138,19 +138,25 @@ export default function PostRideScreen() {
     if (vehicleType === 'bike' && seats > 1) setSeats(1);
   }, [vehicleType]);
 
-  // --- Price calculations ---
-  const fuelRate = FUEL_RATES[fuelType] || 105;
-  const mileageNum = parseFloat(mileage) || 15;
-  const basePrice = distanceKm > 0 ? round2((distanceKm * fuelRate) / mileageNum) : 0;
-  const multiplier = VEHICLE_MULTIPLIERS[vehicleType] || 1.5;
-  const maxAllowed = round2(basePrice * multiplier);
-  const cappedPrice = Math.min(driverPrice, maxAllowed);
-  const perSeat = seats > 0 ? round2(cappedPrice / seats) : 0;
+  // --- Price calculations (per-seat model — SRS v1.5) ---
+  const fuelRate    = FUEL_RATES[fuelType] || 105;
+  const mileageNum  = parseFloat(mileage) || 15;
+  const basePrice   = distanceKm > 0 ? round2((distanceKm * fuelRate) / mileageNum) : 0; // total fuel cost
+  const multiplier  = VEHICLE_MULTIPLIERS[vehicleType] || 1.5;
 
-  // Init slider to max when distance changes
+  // Per-seat zone boundaries
+  const basePerSeat        = (basePrice > 0 && seats > 0) ? round2(basePrice / seats)               : 0; // green zone start
+  const recommendedPerSeat = round2(basePerSeat * 1.2);                                                   // green zone ceiling
+  const maxPerSeat         = (basePrice > 0 && seats > 0) ? round2((basePrice * multiplier) / seats) : 0; // hard cap
+
+  // driverPrice is per-seat; cappedPrice is what gets stored in DB
+  const cappedPrice   = Math.min(driverPrice, maxPerSeat || driverPrice);
+  const totalEarnings = seats > 0 ? round2(cappedPrice * seats) : 0;
+
+  // Init slider to hard cap (max per seat) when route or seats change
   useEffect(() => {
-    if (maxAllowed > 0) setDriverPrice(maxAllowed);
-  }, [maxAllowed]);
+    if (maxPerSeat > 0) setDriverPrice(maxPerSeat);
+  }, [maxPerSeat]);
 
   // --- Validation ---
   const canPublish = (): boolean => {
@@ -333,9 +339,11 @@ export default function PostRideScreen() {
           driverPrice={driverPrice}
           setDriverPrice={setDriverPrice}
           basePrice={basePrice}
-          maxAllowed={maxAllowed}
+          basePerSeat={basePerSeat}
+          recommendedPerSeat={recommendedPerSeat}
+          maxPerSeat={maxPerSeat}
           seats={seats}
-          perSeat={perSeat}
+          totalEarnings={totalEarnings}
           instantBooking={instantBooking}
           setInstantBooking={setInstantBooking}
           instantAck={instantAck}

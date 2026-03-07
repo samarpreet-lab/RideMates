@@ -157,24 +157,42 @@ export const s = StyleSheet.create({
         backgroundColor: '#FAF7F4', borderRadius: 14, padding: 14,
         borderWidth: 1, borderColor: '#EAE0D8', gap: 8,
     },
+    priceDivider: { height: 1, backgroundColor: '#EAE0D8', marginVertical: 2 },
     priceRow: {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     },
     priceRowHighlight: {
         borderTopWidth: 1, borderTopColor: '#EAE0D8', paddingTop: 8, marginTop: 4,
     },
+    priceZoneDot: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
+    zoneDot: { width: 8, height: 8, borderRadius: 4 },
     priceLabel: { fontSize: 13, color: '#6B5344' },
     priceValue: { fontSize: 13, fontWeight: '600', color: '#6B5344' },
     priceLabelBold: { fontSize: 14, fontWeight: '700', color: '#1E1610' },
     priceValueBold: { fontSize: 14, fontWeight: '800', color: '#C24E00' },
 
     // Slider
+    sliderHeaderRow: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        marginTop: 14, marginBottom: 2,
+    },
+    zoneBadge: {
+        paddingHorizontal: 10, paddingVertical: 4,
+        borderRadius: 20, borderWidth: 1,
+    },
+    zoneBadgeText: { fontSize: 11, fontWeight: '700' },
     sliderContainer: {
         flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4,
     },
     slider: { flex: 1, height: 40 },
     sliderMin: { fontSize: 11, fontWeight: '600', color: '#A8937F' },
     sliderMax: { fontSize: 11, fontWeight: '600', color: '#A8937F' },
+    zoneMarkersRow: {
+        flexDirection: 'row', justifyContent: 'space-between',
+        marginTop: -4, marginBottom: 4, paddingHorizontal: 2,
+    },
+    zoneMarkerGreen: { fontSize: 10, color: '#388E3C' },
+    zoneMarkerRed:   { fontSize: 10, color: '#C24E00' },
     sliderValueRow: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
         marginTop: 4,
@@ -183,6 +201,11 @@ export const s = StyleSheet.create({
     sliderCurrentValue: {
         fontSize: 24, fontWeight: '800', color: '#C24E00',
     },
+    totalEarningsRow: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+        marginTop: 4,
+    },
+    totalEarningsText: { fontSize: 12, color: '#6B5344' },
     perSeatNote: {
         textAlign: 'center', fontSize: 12, color: '#6B5344', marginTop: 4,
     },

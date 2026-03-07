@@ -77,18 +77,19 @@ async function createRide(req, res) {
     const fuel_rate = rates.length > 0 ? parseFloat(rates[0].rate_per_litre) : 105;
 
     // --- Run the tiered pricing algorithm (SRS Section 8.1) ---
-    // This calculates base_price, max_allowed, and capped_price
-    // using the vehicle-specific multiplier (bike 1.2x, auto 1.35x, car 1.5x)
+    // driver_set_price is the per-seat price the driver wants to charge.
+    // calculatePrice returns capped_price as per-seat (v1.5 model).
     const pricing = calculatePrice({
       distance_km: parseFloat(distance_km),
       fuel_rate,
       vehicle_mileage: parseFloat(vehicle_mileage) || 15,
       vehicle_type: vehicle_type || 'car',
       driver_set_price: parseFloat(driver_set_price),
+      available_seats: parseInt(available_seats),
     });
 
-    // --- Calculate per-seat price for display ---
-    const per_seat_price = calculatePerSeatPrice(pricing.capped_price, parseInt(available_seats));
+    // pricing.capped_price IS already per-seat — no further division needed
+    const per_seat_price = pricing.capped_price;
 
     // --- Insert the ride into MySQL ---
     const [result] = await pool.query(
@@ -335,7 +336,7 @@ async function updateRide(req, res) {
       // --- Re-run pricing algorithm when price changes (SRS FR-RIDE-02/03) ---
       // We need the ride's distance, mileage, fuel_type, and vehicle_type to recalculate
       const [rideDetails] = await pool.query(
-        'SELECT distance_km, vehicle_mileage, fuel_type, vehicle_type FROM rides WHERE id = ?',
+        'SELECT distance_km, vehicle_mileage, fuel_type, vehicle_type, available_seats FROM rides WHERE id = ?',
         [rideId]
       );
       const rd = rideDetails[0];
@@ -351,6 +352,7 @@ async function updateRide(req, res) {
         vehicle_mileage: parseFloat(rd.vehicle_mileage),
         vehicle_type: rd.vehicle_type,
         driver_set_price: parseFloat(driver_set_price),
+        available_seats: parseInt(rd.available_seats) || 1,
       });
 
       updates.push('driver_set_price = ?');

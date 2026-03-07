@@ -118,13 +118,12 @@ async function bookSeat(req, res) {
       });
     }
 
-    // --- Step 3: Calculate per-seat price ---
-    // price_paid = (capped_price / total_seats_at_creation) × seats_booked
-    // But since available_seats changes over time, we use capped_price / available_seats
-    // times seats_booked for a fair split among remaining passengers
-    const price_paid = Math.round(
-      (parseFloat(ride.capped_price) / ride.available_seats) * seatsRequested * 100
-    ) / 100;
+    // --- Step 3: Calculate price paid ---
+    // capped_price is stored as a per-seat value (SRS v1.5 per-seat model).
+    // price_paid = capped_price × seats_requested — no division needed.
+    // This ensures price certainty: passengers always pay the same per-seat rate
+    // regardless of how many seats are still available.
+    const price_paid = Math.round(parseFloat(ride.capped_price) * seatsRequested);
 
     // --- Step 4: Decrement seats + create/reactivate booking atomically ---
     await connection.query(

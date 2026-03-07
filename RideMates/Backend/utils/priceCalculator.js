@@ -12,6 +12,10 @@
 //
 // SRS v1.3: Pricing is now tiered by vehicle type:
 //   bike/scooter → 1.2x  |  auto → 1.35x  |  car → 1.5x
+// SRS v1.5: Per-seat pricing model — capped_price is now stored per seat.
+//   Green zone  ≤ base_per_seat × 1.2  ("Fair Price")
+//   Yellow zone ≤ max_per_seat         ("Within Range")
+//   Hard cap     = max_per_seat        (slider ceiling)
 // =============================================================================
 
 
@@ -44,41 +48,45 @@ const DEFAULT_MULTIPLIER = 1.5;
 //   driver's requested price — return the legal capped price using the
 //   vehicle-specific maintenance multiplier.
 //
-// FORMULA:
-//   base_price  = (distance_km × fuel_rate) / vehicle_mileage
-//   multiplier  = lookup from VEHICLE_MULTIPLIERS (1.2, 1.35, or 1.5)
-//   max_allowed = base_price × multiplier
-//   capped_price = MIN(driver_set_price, max_allowed)
+// FORMULA (per-seat model — SRS v1.5):
+//   base_price         = (distance_km × fuel_rate) / vehicle_mileage   ← total fuel
+//   multiplier         = lookup from VEHICLE_MULTIPLIERS (1.2, 1.35, or 1.5)
+//   max_allowed        = base_price × multiplier                        ← total ceiling
+//   base_per_seat      = base_price / available_seats                   ← green zone start
+//   recommended_per_seat = base_per_seat × 1.2                         ← green zone ceiling
+//   max_per_seat       = max_allowed / available_seats                  ← hard cap (red)
+//   capped_price       = MIN(driver_set_price, max_per_seat)            ← per-seat, stored in DB
 //
-// WORKED EXAMPLES (from SRS Section 8.1):
-//
-//   Bike: 40 km, ₹105/L, 45 km/L mileage
-//     base_price  = (40×105)/45 = ₹93.33
-//     max_allowed = 93.33 × 1.2 = ₹112.00
-//     driver asks ₹150 → capped to ₹112.00  ⚠️ Clamped
-//
-//   Car: 40 km, ₹105/L, 15 km/L mileage
-//     base_price  = (40×105)/15 = ₹280.00
-//     max_allowed = 280 × 1.5  = ₹420.00
-//     driver asks ₹350 → stays ₹350.00  ✅ Within cap
+// WORKED EXAMPLE — Car, 3 seats, 40 km, ₹105/L, 15 km/L:
+//   base_price         = (40×105)/15  = ₹280.00
+//   max_allowed        = 280 × 1.5   = ₹420.00
+//   base_per_seat      = 280 / 3     = ₹93.33   ← Green zone start
+//   recommended_per_seat = 93.33×1.2 = ₹112.00  ← Green zone ceiling (Fair Price)
+//   max_per_seat       = 420 / 3     = ₹140.00  ← Hard cap
+//   driver asks ₹115/seat → capped_price = ₹115.00 ✅ Within cap (Yellow zone)
+//   driver asks ₹160/seat → capped to    = ₹140.00 ⚠️ Clamped
 //
 // PARAMETERS:
-//   distance_km      (number) — total trip distance in kilometres
-//   fuel_rate        (number) — cost per litre in rupees
-//   vehicle_mileage  (number) — km per litre for the vehicle
-//   vehicle_type     (string) — 'bike', 'scooter', 'auto', or 'car'
-//   driver_set_price (number) — price the driver wants to charge
+//   distance_km        (number) — total trip distance in kilometres
+//   fuel_rate          (number) — cost per litre in rupees
+//   vehicle_mileage    (number) — km per litre for the vehicle
+//   vehicle_type       (string) — 'bike', 'scooter', 'auto', or 'car'
+//   driver_set_price   (number) — per-seat price the driver wants to charge
+//   available_seats    (number) — number of seats the driver is offering
 //
 // RETURNS:
 //   {
-//     base_price   : number  — raw fuel cost
-//     multiplier   : number  — the multiplier used (1.2, 1.35, or 1.5)
-//     max_allowed  : number  — the legal price ceiling
-//     capped_price : number  — the price the driver may charge
-//     was_clamped  : boolean — true if driver's price was reduced
+//     base_price           : number  — total raw fuel cost (reference)
+//     multiplier           : number  — vehicle multiplier used
+//     max_allowed          : number  — total legal price ceiling (reference)
+//     base_per_seat        : number  — pure fuel share per seat (Green zone start)
+//     recommended_per_seat : number  — base_per_seat × 1.2 (Green zone ceiling)
+//     max_per_seat         : number  — hard cap per seat (slider maximum)
+//     capped_price         : number  — final per-seat price stored in DB
+//     was_clamped          : boolean — true if driver's price was reduced
 //   }
 // =============================================================================
-function calculatePrice({ distance_km, fuel_rate, vehicle_mileage, vehicle_type, driver_set_price }) {
+function calculatePrice({ distance_km, fuel_rate, vehicle_mileage, vehicle_type, driver_set_price, available_seats }) {
 
   // --- Input validation ---
   if (!distance_km || distance_km <= 0) {
@@ -94,26 +102,35 @@ function calculatePrice({ distance_km, fuel_rate, vehicle_mileage, vehicle_type,
     throw new Error('driver_set_price must be a non-negative number');
   }
 
-  // --- Step 1: Calculate the raw fuel cost for the trip ---
+  const seats = Math.max(1, parseInt(available_seats) || 1);
+
+  // --- Step 1: Calculate the total raw fuel cost for the trip ---
   const base_price = (distance_km * fuel_rate) / vehicle_mileage;
 
   // --- Step 2: Look up the vehicle-specific multiplier ---
-  // If vehicle_type is missing or unknown, default to car (1.5x — highest)
   const multiplier = VEHICLE_MULTIPLIERS[vehicle_type] || DEFAULT_MULTIPLIER;
 
-  // --- Step 3: Calculate the legal price ceiling ---
+  // --- Step 3: Calculate the total legal price ceiling ---
   const max_allowed = base_price * multiplier;
 
-  // --- Step 4: Clamp the driver's price to the ceiling ---
-  const capped_price = Math.min(driver_set_price, max_allowed);
-  const was_clamped = driver_set_price > max_allowed;
+  // --- Step 4: Per-seat zone boundaries ---
+  const base_per_seat        = base_price / seats;       // Green zone: pure fuel share
+  const recommended_per_seat = base_per_seat * 1.2;      // Green zone ceiling (+20% buffer)
+  const max_per_seat         = max_allowed / seats;      // Hard cap — Yellow zone ceiling
 
-  // --- Step 5: Round and return ---
+  // --- Step 5: Clamp driver's per-seat price to the hard cap ---
+  const capped_price = Math.min(driver_set_price, max_per_seat);  // stored per-seat in DB
+  const was_clamped  = driver_set_price > max_per_seat;
+
+  // --- Step 6: Round and return ---
   return {
-    base_price:   round2(base_price),
+    base_price:           round2(base_price),
     multiplier,
-    max_allowed:  round2(max_allowed),
-    capped_price: round2(capped_price),
+    max_allowed:          round2(max_allowed),
+    base_per_seat:        round2(base_per_seat),
+    recommended_per_seat: round2(recommended_per_seat),
+    max_per_seat:         round2(max_per_seat),
+    capped_price:         round2(capped_price),   // PER SEAT — stored in rides.capped_price
     was_clamped,
   };
 }
@@ -123,34 +140,34 @@ function calculatePrice({ distance_km, fuel_rate, vehicle_mileage, vehicle_type,
 // FUNCTION 2: calculatePerSeatPrice
 //
 // PURPOSE:
-//   Divide the total trip cost among the passengers who booked seats.
+//   Calculate the total price a passenger pays for their booking.
+//   Since capped_price is now stored AS a per-seat value, multiply by seats booked.
 //
 // SRS REFERENCE: Section 4.1.3 — FR-BOOK-06
 //
 // FORMULA:
-//   per_seat_price = capped_price / seats_booked
+//   price_paid = capped_price_per_seat × seats_booked
 //
-// WORKED EXAMPLE:
-//   capped_price = ₹350, seats_booked = 3 → ₹116.67 per seat
+// WORKED EXAMPLE (car, 3 seats offered, 40 km):
+//   capped_price_per_seat = ₹115 (driver set), seats_booked = 2 → price_paid = ₹230
 //
 // PARAMETERS:
-//   capped_price  (number) — the total fare for the ride (from calculatePrice)
-//   seats_booked  (number) — how many seats the passenger is booking
+//   capped_price_per_seat  (number) — the per-seat fare stored in rides.capped_price
+//   seats_booked           (number) — how many seats the passenger is booking
 //
 // RETURNS:
-//   number — price per seat, rounded to 2 decimal places
+//   number — total price paid for this booking, rounded to 2 decimal places
 // =============================================================================
-function calculatePerSeatPrice(capped_price, seats_booked) {
+function calculatePerSeatPrice(capped_price_per_seat, seats_booked) {
 
-  if (!capped_price || capped_price < 0) {
-    throw new Error('capped_price must be a non-negative number');
+  if (!capped_price_per_seat || capped_price_per_seat < 0) {
+    throw new Error('capped_price_per_seat must be a non-negative number');
   }
   if (!seats_booked || seats_booked < 1) {
     throw new Error('seats_booked must be at least 1');
   }
 
-  const per_seat = capped_price / seats_booked;
-  return round2(per_seat);
+  return round2(capped_price_per_seat * seats_booked);
 }
 
 
@@ -244,13 +261,13 @@ function calculateCancellationPenalty(departure_time, cancellation_time) {
 // =============================================================================
 // HELPER: round2
 //
-// Rounds a number to exactly 2 decimal places.
-// Used internally by the functions above.
+// Rounds a number to the nearest integer.
+// Prices are whole rupees for easy payment.
 //
-// Example: round2(116.666...) → 116.67
+// Example: round2(116.66) → 117
 // =============================================================================
 function round2(value) {
-  return Math.round(value * 100) / 100;
+  return Math.round(value);
 }
 
 

@@ -14,8 +14,8 @@ CREATE TABLE rides (
     vehicle_mileage     DECIMAL(5, 2) DEFAULT 15.00,
     fuel_type           ENUM('petrol', 'diesel', 'cng', 'electric') DEFAULT 'petrol',
     base_price          DECIMAL(8, 2) NOT NULL,
-    driver_set_price    DECIMAL(8, 2) NOT NULL,
-    capped_price        DECIMAL(8, 2) NOT NULL,
+    driver_set_price    DECIMAL(8, 2) NOT NULL,  -- per-seat
+    capped_price        DECIMAL(8, 2) NOT NULL,  -- per-seat, MIN(driver_set_price, max_per_seat)
     is_emergency_route  BOOLEAN DEFAULT FALSE,
     is_women_only       BOOLEAN DEFAULT FALSE,
     instant_booking     BOOLEAN DEFAULT FALSE,
