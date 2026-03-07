@@ -127,17 +127,17 @@ export const s = StyleSheet.create({
   logoutSection: { marginTop: 18, paddingHorizontal: 16, paddingBottom: 8 },
   logoutCard: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#fef2f2', borderRadius: 16,
+    backgroundColor: '#FFF6F5', borderRadius: 16,
     paddingHorizontal: 16, paddingVertical: 14,
-    borderWidth: 1, borderColor: '#fecaca',
+    borderWidth: 1, borderColor: '#FCDCBF',
   },
   logoutIconWrap: {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: '#fee2e2', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#FFF6F5', alignItems: 'center', justifyContent: 'center',
   },
   logoutTextWrap: { flex: 1 },
-  logoutTitle: { fontSize: 14, fontWeight: '700', color: '#dc2626' },
-  logoutEmail: { fontSize: 11, color: '#b91c1c', marginTop: 2, opacity: 0.7 },
+  logoutTitle: { fontSize: 14, fontWeight: '700', color: '#D9622A' },
+  logoutEmail: { fontSize: 11, color: '#A84112', marginTop: 2, opacity: 0.7 },
 
   // ─── Search Modal ─────────────────────────────────────────────────────────
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
@@ -262,8 +262,8 @@ export const s = StyleSheet.create({
   emergencyToggleRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     marginHorizontal: 16, paddingHorizontal: 14, paddingVertical: 12,
-    backgroundColor: '#fffbeb', borderRadius: 14,
-    borderWidth: 1, borderColor: '#fde68a',
+    backgroundColor: '#FEFDF2', borderRadius: 14,
+    borderWidth: 1, borderColor: '#D4960F',
     marginBottom: 16,
   },
   emergencyToggleLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
@@ -377,10 +377,10 @@ export const s = StyleSheet.create({
   rideSeatText: { fontSize: 11, fontWeight: '600', color: '#1976d2' },
   rideEmergencyBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#fffbeb', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12,
-    borderWidth: 1, borderColor: '#fde68a',
+    backgroundColor: '#FEFDF2', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12,
+    borderWidth: 1, borderColor: '#D4960F',
   },
-  rideEmergencyText: { fontSize: 11, fontWeight: '600', color: '#f59e0b' },
+  rideEmergencyText: { fontSize: 11, fontWeight: '600', color: '#D4960F' },
   rideFuelBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: '#F5F0EB', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12,

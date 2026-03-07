@@ -13,7 +13,6 @@ import {
     ActivityIndicator,
     Animated,
     Dimensions,
-    Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
@@ -21,6 +20,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import api from '../../services/api';
 import MyRideCard from '../../components/MyRides/MyRideCard';
 import { s } from '../../components/MyRides/styles';
+import { useAlert } from '../../components/ui/AlertContext';
 
 const { width } = Dimensions.get('window');
 const TAB_WIDTH = width / 2;
@@ -29,6 +29,7 @@ type TabOption = 'booked' | 'published';
 
 export default function MyRidesScreen() {
     const router = useRouter();
+    const { showAlert } = useAlert();
 
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<TabOption>('booked');
@@ -74,13 +75,13 @@ export default function MyRidesScreen() {
                 if (penalty > 0) {
                     msg += `\n\nPenalty: −${penalty} Trust Points (${tier})`;
                 }
-                Alert.alert('Booking Cancelled', msg);
+                showAlert({ type: 'success', title: 'Booking Cancelled', message: msg });
                 fetchMyRides();
             } else {
-                Alert.alert('Error', res.data.message || 'Could not cancel booking.');
+                showAlert({ type: 'error', title: 'Error', message: res.data.message || 'Could not cancel booking.' });
             }
         } catch (error: any) {
-            Alert.alert('Error', error.response?.data?.message || 'Something went wrong.');
+            showAlert({ type: 'error', title: 'Error', message: error.response?.data?.message || 'Something went wrong.' });
         }
     };
 

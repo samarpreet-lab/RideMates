@@ -9,12 +9,17 @@ export const s = StyleSheet.create({
 
     // Header 
     header: {
-        paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 28) + 16 : 50,
-        paddingHorizontal: 20,
+        paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 28) + 12 : 50,
+        paddingHorizontal: 16,
         paddingBottom: 16,
         backgroundColor: '#fff',
         borderBottomWidth: 1,
         borderBottomColor: '#EAE0D8',
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 1 },
     },
     headerTitle: { fontSize: 24, fontWeight: '800', color: '#1E1610' },
 
@@ -141,14 +146,14 @@ export const s = StyleSheet.create({
         marginTop: 14,
         paddingVertical: 10,
         borderRadius: 12,
-        backgroundColor: '#fee2e2',
+        backgroundColor: '#FFF6F5',
         borderWidth: 1,
-        borderColor: '#fca5a5',
+        borderColor: '#FCDCBF',
     },
     cancelBookingBtnText: {
         fontSize: 13,
         fontWeight: '700',
-        color: '#ef4444',
+        color: '#D9622A',
     },
 
     // "Booked" banner for driver's published rides that have bookings
@@ -156,9 +161,9 @@ export const s = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
-        backgroundColor: '#d1fae5',
+        backgroundColor: '#F2FAF5',
         borderWidth: 1,
-        borderColor: '#6ee7b7',
+        borderColor: '#3DAA6E',
         borderRadius: 10,
         paddingHorizontal: 12,
         paddingVertical: 8,
@@ -167,6 +172,6 @@ export const s = StyleSheet.create({
     bookedBannerText: {
         fontSize: 12,
         fontWeight: '700',
-        color: '#059669',
+        color: '#3DAA6E',
     },
 });

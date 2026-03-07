@@ -259,20 +259,20 @@ export const ds = StyleSheet.create({
     },
     badgeText: { fontSize: 12, fontWeight: '600' },
 
-    emergencyBadge: { backgroundColor: '#fffbeb', borderColor: '#fde68a' },
-    emergencyText: { color: '#f59e0b' },
+    emergencyBadge: { backgroundColor: '#FEFDF2', borderColor: '#D4960F' },
+    emergencyText: { color: '#D4960F' },
 
-    womenBadge: { backgroundColor: '#fce7f3', borderColor: '#f9a8d4' },
-    womenText: { color: '#db2777' },
+    womenBadge: { backgroundColor: '#FEF0E4', borderColor: '#C24E00' },
+    womenText: { color: '#C24E00' },
 
-    instantBadge: { backgroundColor: '#ecfdf5', borderColor: '#a7f3d0' },
-    instantText: { color: '#059669' },
+    instantBadge: { backgroundColor: '#F2FAF5', borderColor: '#3DAA6E' },
+    instantText: { color: '#3DAA6E' },
 
     seatBadge: { backgroundColor: '#e3f2fd', borderColor: '#90caf9' },
     seatText: { color: '#1976d2' },
 
-    fuelBadge: { backgroundColor: '#F5F0EB', borderColor: '#EAE0D8' },
-    fuelText: { color: '#6B5344' },
+    fuelBadge: { backgroundColor: '#e3f2fd', borderColor: '#90caf9' },
+    fuelText: { color: '#1976d2' },
 
     // ─── Seat Selector ─────────────────────────────────────────────────────────
     seatSelectorCard: {
@@ -499,15 +499,15 @@ export const ds = StyleSheet.create({
         flex: 1,
         height: 52,
         borderRadius: 16,
-        backgroundColor: '#fee2e2',
+        backgroundColor: '#FFF6F5',
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 6,
         borderWidth: 1,
-        borderColor: '#fca5a5',
+        borderColor: '#FCDCBF',
     },
-    cancelRideBtnText: { color: '#ef4444', fontSize: 15, fontWeight: '700' },
+    cancelRideBtnText: { color: '#D9622A', fontSize: 15, fontWeight: '700' },
 
     // ─── Modal ────────────────────────────────────────────────────────────────
     modalOverlay: {

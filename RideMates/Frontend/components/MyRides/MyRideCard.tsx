@@ -3,7 +3,8 @@
 // =============================================================================
 
 import React from 'react';
-import { View, Text, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { useAlert } from '../ui/AlertContext';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { s } from './styles';
@@ -18,6 +19,7 @@ interface MyRideCardProps {
 
 export default function MyRideCard({ ride, viewMode, onCancelBooking }: MyRideCardProps) {
     const router = useRouter();
+    const { showAlert } = useAlert();
 
     // Determine status color and text 
     // For passengers, we look at the booking status. For drivers, the ride status.
@@ -29,22 +31,22 @@ export default function MyRideCard({ ride, viewMode, onCancelBooking }: MyRideCa
         status = 'expired';
     }
 
-    let statusColor = '#666';
-    let statusBg = '#f5f5f5';
+    let statusColor = '#6B5344';
+    let statusBg = '#F5F0EB';
     let statusLabel = status;
 
     if (status === 'active' || status === 'confirmed') {
-        statusColor = '#10b981'; // Green
-        statusBg = '#d1fae5';
+        statusColor = '#3DAA6E'; // Success
+        statusBg = '#F2FAF5';
     } else if (status === 'completed') {
-        statusColor = '#3b82f6'; // Blue
-        statusBg = '#dbeafe';
+        statusColor = '#1976d2'; // Info (completed)
+        statusBg = '#e3f2fd';
     } else if (status === 'cancelled') {
-        statusColor = '#ef4444'; // Red
-        statusBg = '#fee2e2';
+        statusColor = '#D9622A'; // Error
+        statusBg = '#FFF6F5';
     } else if (status === 'expired') {
-        statusColor = '#d97706'; // Amber
-        statusBg = '#fef3c7';
+        statusColor = '#D4960F'; // Warning
+        statusBg = '#FEFDF2';
         statusLabel = 'Ride Time Passed';
     }
 
@@ -73,18 +75,14 @@ export default function MyRideCard({ ride, viewMode, onCancelBooking }: MyRideCa
             penaltyWarning = '⚠️ Last-minute cancellation — you will lose 5 Trust Points (same as a no-show).';
         }
 
-        Alert.alert(
-            'Cancel Booking?',
-            `Are you sure you want to cancel your booking for ${ride.origin_city} → ${ride.destination_city}?\n\n${penaltyWarning}`,
-            [
-                { text: 'Keep Booking', style: 'cancel' },
-                {
-                    text: 'Cancel Booking',
-                    style: 'destructive',
-                    onPress: () => onCancelBooking?.(ride.booking_id),
-                },
-            ]
-        );
+        showAlert({
+            type: 'confirm',
+            title: 'Cancel Booking?',
+            message: `Are you sure you want to cancel your booking for ${ride.origin_city} → ${ride.destination_city}?\n\n${penaltyWarning}`,
+            confirmText: 'Cancel Booking',
+            cancelText: 'Keep Booking',
+            onConfirm: () => onCancelBooking?.(ride.booking_id),
+        });
     };
 
     return (
@@ -102,7 +100,7 @@ export default function MyRideCard({ ride, viewMode, onCancelBooking }: MyRideCa
             {/* Booked Banner — shown on driver's published rides that have bookings */}
             {viewMode === 'driver' && Number(ride.booking_count) > 0 && (
                 <View style={s.bookedBanner}>
-                    <MaterialIcons name="people" size={16} color="#059669" />
+                    <MaterialIcons name="people" size={16} color="#3DAA6E" />
                     <Text style={s.bookedBannerText}>
                         🎉 {ride.booking_count} Booked{Number(ride.booking_count) !== 1 ? 's' : ''}
                     </Text>
@@ -155,7 +153,7 @@ export default function MyRideCard({ ride, viewMode, onCancelBooking }: MyRideCa
                     activeOpacity={0.8}
                     onPress={handleCancelBooking}
                 >
-                    <MaterialIcons name="cancel" size={16} color="#ef4444" />
+                    <MaterialIcons name="cancel" size={16} color="#D9622A" />
                     <Text style={s.cancelBookingBtnText}>Cancel Booking</Text>
                 </TouchableOpacity>
             )}

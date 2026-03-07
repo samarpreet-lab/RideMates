@@ -18,7 +18,6 @@ import {
     ScrollView,
     TouchableOpacity,
     ActivityIndicator,
-    Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -33,6 +32,7 @@ import SeatSelector from '../../components/RideDetails/SeatSelector';
 import BookingSuccessSheet from '../../components/RideDetails/BookingSuccessSheet';
 import EditRideModal from '../../components/RideDetails/EditRideModal';
 import PassengerList from '../../components/RideDetails/PassengerList';
+import { useAlert } from '../../components/ui/AlertContext';
 
 type ScreenState = 'loading' | 'detail' | 'error' | 'success';
 
@@ -47,6 +47,7 @@ interface BookingData {
 export default function RideDetailsScreen() {
     const { rideId, from } = useLocalSearchParams<{ rideId: string; from?: string }>();
     const router = useRouter();
+    const { showAlert } = useAlert();
     const goBack = () => router.push(from === 'my-rides' ? '/(tabs)/my-rides' : '/(tabs)/explore');
 
     const [state, setState] = useState<ScreenState>('loading');
@@ -105,12 +106,12 @@ export default function RideDetailsScreen() {
                 setBooking(res.data.data);
                 setState('success');
             } else {
-                Alert.alert('Booking Failed', res.data.message || 'Could not book the ride.');
+                showAlert({ type: 'error', title: 'Booking Failed', message: res.data.message || 'Could not book the ride.' });
             }
         } catch (err: any) {
             const msg =
                 err.response?.data?.message || 'Something went wrong. Please try again.';
-            Alert.alert('Booking Failed', msg);
+            showAlert({ type: 'error', title: 'Booking Failed', message: msg });
         } finally {
             setIsBooking(false);
         }
@@ -118,41 +119,41 @@ export default function RideDetailsScreen() {
 
     // ─── Handle Driver Ride Edits ──────────────────────────────────────────
     const handleCancelRide = () => {
-        Alert.alert('Cancel Ride', 'Are you sure you want to cancel this published ride? This cannot be undone.', [
-            { text: 'No, Keep It', style: 'cancel' },
-            {
-                text: 'Yes, Cancel',
-                style: 'destructive',
-                onPress: async () => {
-                    try {
-                        const res = await api.delete(`/rides/${ride?.id}`);
-                        if (res.data.success) {
-                            Alert.alert('Ride Cancelled', 'Your ride has been successfully cancelled.');
-                            router.replace('/(tabs)/my-rides');
-                        } else {
-                            Alert.alert('Error', res.data.message || 'Could not cancel ride.');
-                        }
-                    } catch (err: any) {
-                        Alert.alert('Error', err.response?.data?.message || 'Failed to cancel ride.');
+        showAlert({
+            type: 'confirm',
+            title: 'Cancel Ride',
+            message: 'Are you sure you want to cancel this published ride? This cannot be undone.',
+            cancelText: 'No, Keep It',
+            confirmText: 'Yes, Cancel',
+            onConfirm: async () => {
+                try {
+                    const res = await api.delete(`/rides/${ride?.id}`);
+                    if (res.data.success) {
+                        showAlert({ type: 'success', title: 'Ride Cancelled', message: 'Your ride has been successfully cancelled.' });
+                        router.replace('/(tabs)/my-rides');
+                    } else {
+                        showAlert({ type: 'error', title: 'Error', message: res.data.message || 'Could not cancel ride.' });
                     }
+                } catch (err: any) {
+                    showAlert({ type: 'error', title: 'Error', message: err.response?.data?.message || 'Failed to cancel ride.' });
                 }
             }
-        ]);
+        });
     };
 
     const handleEditSave = async (updates: Partial<Ride>) => {
         try {
             const res = await api.put(`/rides/${ride?.id}`, updates);
             if (res.data.success) {
-                Alert.alert('Success', 'Ride updated successfully!');
+                showAlert({ type: 'success', title: 'Success', message: 'Ride updated successfully!' });
                 await fetchRide(); // Refresh data
                 return true;
             } else {
-                Alert.alert('Error', res.data.message || 'Could not update ride.');
+                showAlert({ type: 'error', title: 'Error', message: res.data.message || 'Could not update ride.' });
                 return false;
             }
         } catch (err: any) {
-            Alert.alert('Error', err.response?.data?.message || 'Failed to update ride.');
+            showAlert({ type: 'error', title: 'Error', message: err.response?.data?.message || 'Failed to update ride.' });
             return false;
         }
     };
@@ -262,11 +263,13 @@ export default function RideDetailsScreen() {
                             </TouchableOpacity>
                         </View>
                     ) : (
-                        <View style={[ds.bookBtn, ds.bookBtnDisabled, { width: '100%', marginHorizontal: 0 }]}>
-                            <MaterialIcons name="info-outline" size={20} color="#999" />
-                            <Text style={[ds.bookBtnText, { color: '#999' }]}>
-                                Ride is {ride.status}
-                            </Text>
+                        <View style={ds.bottomBarRow}>
+                            <View style={[ds.bookBtn, ds.bookBtnDisabled, { flex: 1, marginHorizontal: 0 }]}>
+                                <MaterialIcons name="info-outline" size={20} color="#999" />
+                                <Text style={[ds.bookBtnText, { color: '#999' }]}>
+                                    Ride is {ride.status}
+                                </Text>
+                            </View>
                         </View>
                     )}
                 </View>
@@ -298,17 +301,19 @@ export default function RideDetailsScreen() {
                 </View>
             ) : (
                 <View style={ds.bottomBar}>
-                    <View
-                        style={[
-                            ds.bookBtn,
-                            ds.bookBtnDisabled,
-                            { flex: 1, marginHorizontal: 0 },
-                        ]}
-                    >
-                        <MaterialIcons name="block" size={20} color="#999" />
-                        <Text style={[ds.bookBtnText, { color: '#999' }]}>
-                            {ride.available_seats <= 0 ? 'Fully Booked' : 'Ride Unavailable'}
-                        </Text>
+                    <View style={ds.bottomBarRow}>
+                        <View
+                            style={[
+                                ds.bookBtn,
+                                ds.bookBtnDisabled,
+                                { flex: 1, marginHorizontal: 0 },
+                            ]}
+                        >
+                            <MaterialIcons name="block" size={20} color="#999" />
+                            <Text style={[ds.bookBtnText, { color: '#999' }]}>
+                                {ride.available_seats <= 0 ? 'Fully Booked' : 'Ride Unavailable'}
+                            </Text>
+                        </View>
                     </View>
                 </View>
             )}

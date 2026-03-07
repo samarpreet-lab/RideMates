@@ -1,6 +1,8 @@
 // =============================================================================
 // components/Explore/LocationPickerModal.tsx — Full-Screen Location Picker
 // =============================================================================
+// Hybrid Geocoding (FR-MAP-01): Local hubs first → Photon API fallback.
+// =============================================================================
 
 import React, { useRef } from 'react';
 import {
@@ -12,11 +14,13 @@ import {
   ScrollView,
   StatusBar,
   Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { s } from './styles';
 import { ALL_HUBS, QUICK_ORIGINS, QUICK_DESTINATIONS } from './constants';
+import usePhotonSearch from '../../hooks/usePhotonSearch';
 
 interface LocationPickerModalProps {
   visible: boolean;
@@ -37,12 +41,16 @@ export default function LocationPickerModal({
 }: LocationPickerModalProps) {
   const inputRef = useRef<TextInput>(null);
 
+  // Local hub filtering
   const filteredHubs = query.trim().length > 0
     ? ALL_HUBS.filter((h) =>
       h.label.toLowerCase().includes(query.toLowerCase()) ||
       h.subtitle.toLowerCase().includes(query.toLowerCase())
     )
     : ALL_HUBS;
+
+  // Photon fallback (only fires when no local matches & 3+ chars after 450ms)
+  const { photonResults, loading: photonLoading } = usePhotonSearch(query, ALL_HUBS, {});
 
   const quickChips = target === 'origin' ? QUICK_ORIGINS : QUICK_DESTINATIONS;
 
@@ -90,7 +98,7 @@ export default function LocationPickerModal({
           )}
         </View>
 
-        {/* Hub list */}
+        {/* Hub list — local results */}
         <FlatList
           data={filteredHubs}
           keyExtractor={(item) => item.id}
@@ -117,6 +125,39 @@ export default function LocationPickerModal({
             </TouchableOpacity>
           )}
           ItemSeparatorComponent={() => <View style={s.locHubSeparator} />}
+          ListFooterComponent={
+            <>
+              {/* Photon API results — shown below local hubs */}
+              {photonLoading && (
+                <View style={{ alignItems: 'center', paddingVertical: 16 }}>
+                  <ActivityIndicator size="small" color="#C24E00" />
+                  <Text style={{ fontSize: 12, color: '#A8937F', marginTop: 6 }}>Searching nearby places...</Text>
+                </View>
+              )}
+              {photonResults.length > 0 && (
+                <>
+                  <Text style={s.locPickerSectionLabel}>NEARBY PLACES</Text>
+                  {photonResults.map((item) => (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={s.locHubItem}
+                      onPress={() => onSelect(item.label)}
+                      activeOpacity={0.75}
+                    >
+                      <View style={s.locHubIconWrap}>
+                        <MaterialIcons name="public" size={20} color="#6B5344" />
+                      </View>
+                      <View style={s.locHubTextWrap}>
+                        <Text style={s.locHubName}>{item.label}</Text>
+                        <Text style={s.locHubSubtitle}>{item.subtitle}</Text>
+                      </View>
+                      <MaterialIcons name="chevron-right" size={18} color="#ddd" />
+                    </TouchableOpacity>
+                  ))}
+                </>
+              )}
+            </>
+          }
           contentContainerStyle={{ paddingBottom: 20 }}
         />
 

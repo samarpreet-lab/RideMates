@@ -4,7 +4,6 @@ export const s = StyleSheet.create({
     safeArea: {
         flex: 1,
         backgroundColor: '#F5F0EB',
-        paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
     },
     loadingContainer: {
         flex: 1, justifyContent: 'center', alignItems: 'center',
@@ -14,17 +13,18 @@ export const s = StyleSheet.create({
 
     // Header
     header: {
-        flexDirection: 'row', alignItems: 'center',
-        paddingHorizontal: 16, paddingVertical: 14,
+        paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 28) + 12 : 50,
+        paddingHorizontal: 16, paddingBottom: 16,
+        backgroundColor: '#fff',
         borderBottomWidth: 1, borderBottomColor: '#EAE0D8',
-    },
-    headerBackBtn: {
-        width: 36, height: 36, borderRadius: 18,
-        backgroundColor: '#F5F0EB', alignItems: 'center', justifyContent: 'center',
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 1 },
     },
     headerTitle: {
-        flex: 1, textAlign: 'center',
-        fontSize: 18, fontWeight: '800', color: '#1E1610',
+        fontSize: 24, fontWeight: '800', color: '#1E1610',
     },
 
     // Scrollview
@@ -210,6 +210,8 @@ export const s = StyleSheet.create({
         backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 12,
         paddingBottom: Platform.OS === 'ios' ? 34 : 16,
         borderTopWidth: 1, borderTopColor: '#EAE0D8',
+        elevation: 12, shadowColor: '#000',
+        shadowOpacity: 0.1, shadowRadius: 8, shadowOffset: { width: 0, height: -4 },
     },
     publishBtn: {
         backgroundColor: '#C24E00', borderRadius: 16, height: 54,

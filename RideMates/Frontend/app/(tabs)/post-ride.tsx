@@ -9,7 +9,6 @@ import {
   View, Text, TouchableOpacity,
   ActivityIndicator, ScrollView, Platform, StatusBar
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
@@ -92,6 +91,9 @@ export default function PostRideScreen() {
   // --- Location picker ---
   const [locPickerTarget, setLocPickerTarget] = useState<'origin' | 'destination' | null>(null);
   const [locQuery, setLocQuery] = useState('');
+  // Coords from Photon for cities not in HUB_COORDS
+  const [originCoords, setOriginCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [destCoords, setDestCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   // --- Load user profile ---
   const loadProfile = async () => {
@@ -101,7 +103,7 @@ export default function PostRideScreen() {
     } catch (error: any) {
       if (error.response?.status === 401) {
         await deleteToken();
-        router.replace('/(tabs)/login');
+        router.replace('/(tabs)' as any);
       }
     } finally {
       setLoading(false);
@@ -118,15 +120,15 @@ export default function PostRideScreen() {
   // --- Compute distance when both cities set ---
   useEffect(() => {
     if (!origin || !destination) { setDistanceKm(0); return; }
-    const o = getCoords(origin);
-    const d = getCoords(destination);
+    const o = getCoords(origin) || originCoords;
+    const d = getCoords(destination) || destCoords;
     if (o && d) {
       const km = haversineKm(o.lat, o.lng, d.lat, d.lng);
       setDistanceKm(km);
     } else {
       setDistanceKm(0);
     }
-  }, [origin, destination]);
+  }, [origin, destination, originCoords, destCoords]);
 
   // --- Update mileage default on vehicle type change ---
   useEffect(() => {
@@ -170,8 +172,8 @@ export default function PostRideScreen() {
   // --- Publish ---
   const handlePublish = async () => {
     if (!canPublish()) return;
-    const oCoords = getCoords(origin);
-    const dCoords = getCoords(destination);
+    const oCoords = getCoords(origin) || originCoords;
+    const dCoords = getCoords(destination) || destCoords;
 
     setPublishing(true);
     try {
@@ -221,9 +223,14 @@ export default function PostRideScreen() {
     }
   };
 
-  const applyLocSelection = (label: string) => {
-    if (locPickerTarget === 'origin') setOrigin(label);
-    else setDestination(label);
+  const applyLocSelection = (label: string, coords?: { lat: number; lng: number }) => {
+    if (locPickerTarget === 'origin') {
+      setOrigin(label);
+      setOriginCoords(coords ?? null);
+    } else {
+      setDestination(label);
+      setDestCoords(coords ?? null);
+    }
     setLocPickerTarget(null);
     setLocQuery('');
   };
@@ -244,8 +251,8 @@ export default function PostRideScreen() {
   maxDate.setDate(maxDate.getDate() + 7);
 
   return (
-    <SafeAreaView style={s.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+    <View style={s.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" translucent />
 
       <LocationPickerModal
         locPickerTarget={locPickerTarget}
@@ -285,11 +292,7 @@ export default function PostRideScreen() {
 
       {/* Header */}
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.replace('/(tabs)/explore')} style={s.headerBackBtn}>
-          <MaterialIcons name="arrow-back" size={22} color="#1a1a1a" />
-        </TouchableOpacity>
         <Text style={s.headerTitle}>Post a Ride</Text>
-        <View style={{ width: 36 }} />
       </View>
 
       <ScrollView
@@ -364,6 +367,6 @@ export default function PostRideScreen() {
           )}
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }

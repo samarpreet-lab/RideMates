@@ -29,15 +29,25 @@ interface CustomAlertProps {
 
 const ALERT_CONFIG: Record<AlertType, {
     icon: keyof typeof MaterialIcons.glyphMap;
-    color: string;
-    bgLight: string;
+    bgColor: string;
+    bubbleColor: string;
+    textColor: string;
 }> = {
-    success: { icon: 'check-circle', color: '#3DAA6E', bgLight: '#F2FAF5' },
-    error: { icon: 'error', color: '#D9622A', bgLight: '#FFF6F5' },
-    warning: { icon: 'warning', color: '#D4960F', bgLight: '#FEFDF2' },
-    info: { icon: 'info', color: '#2563eb', bgLight: '#eff6ff' },
-    confirm: { icon: 'help-outline', color: '#C24E00', bgLight: '#FFF8F2' },
+    success: { icon: 'check', bgColor: '#3DAA6E', bubbleColor: '#287F4F', textColor: '#FFFFFF' },
+    error: { icon: 'close', bgColor: '#D9622A', bubbleColor: '#A84112', textColor: '#FFFFFF' },
+    warning: { icon: 'priority-high', bgColor: '#D4960F', bubbleColor: '#9C6F0A', textColor: '#FFFFFF' },
+    info: { icon: 'question-mark', bgColor: '#007AFF', bubbleColor: '#005AC6', textColor: '#FFFFFF' },
+    confirm: { icon: 'help', bgColor: '#C24E00', bubbleColor: '#8C3800', textColor: '#FFFFFF' },
 };
+
+// SVG shapes could be used here for more complex splats, but View border-radii work well for a native approach
+const Splats = ({ color }: { color: string }) => (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <View style={[styles.splat1, { backgroundColor: color }]} />
+        <View style={[styles.splat2, { backgroundColor: color }]} />
+        <View style={[styles.splat3, { backgroundColor: color }]} />
+    </View>
+);
 
 export default function CustomAlert({
     visible,
@@ -100,58 +110,51 @@ export default function CustomAlert({
                     activeOpacity={1}
                     onPress={isConfirm ? undefined : onDismiss}
                 />
-                <Animated.View
-                    style={[
-                        styles.card,
-                        { transform: [{ scale: scaleAnim }] },
-                    ]}
-                >
-                    {/* Icon */}
-                    <View style={[styles.iconCircle, { backgroundColor: cfg.bgLight }]}>
-                        <MaterialIcons name={cfg.icon} size={32} color={cfg.color} />
-                    </View>
 
-                    {/* Title */}
-                    <Text style={[styles.title, { color: cfg.color }]}>{title}</Text>
+                {/* The Animated Wrapper keeps overflow visible so the bubble pops out */}
+                <Animated.View style={[styles.wrapper, { transform: [{ scale: scaleAnim }] }]}>
 
-                    {/* Message */}
-                    <Text style={styles.message}>{message}</Text>
+                    {/* The Main Card with overflow hidden */}
+                    <View style={[styles.card, { backgroundColor: cfg.bgColor }]}>
+                        <Splats color={cfg.bubbleColor} />
 
-                    {/* Buttons */}
-                    <View style={styles.btnRow}>
-                        {isConfirm ? (
-                            <>
+                        <TouchableOpacity style={styles.closeBtn} onPress={onDismiss}>
+                            <MaterialIcons name="close" size={20} color={cfg.textColor} />
+                        </TouchableOpacity>
+
+                        <Text style={[styles.title, { color: cfg.textColor }]}>{title}</Text>
+                        <Text style={[styles.message, { color: cfg.textColor }]}>{message}</Text>
+
+                        {/* Confirmation Buttons (Only for 'confirm' type) */}
+                        {isConfirm && (
+                            <View style={styles.btnRow}>
                                 <TouchableOpacity
-                                    style={[styles.btn, styles.btnCancel]}
+                                    style={[styles.btn, { backgroundColor: cfg.bubbleColor }]}
                                     onPress={onDismiss}
-                                    activeOpacity={0.85}
                                 >
-                                    <Text style={styles.btnCancelText}>
+                                    <Text style={[styles.btnText, { color: cfg.textColor }]}>
                                         {cancelText || 'Cancel'}
                                     </Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
-                                    style={[styles.btn, styles.btnConfirm, { backgroundColor: cfg.color }]}
+                                    style={[styles.btn, styles.btnConfirm]}
                                     onPress={onConfirm}
-                                    activeOpacity={0.85}
                                 >
                                     <Text style={styles.btnConfirmText}>
                                         {confirmText || 'Confirm'}
                                     </Text>
                                 </TouchableOpacity>
-                            </>
-                        ) : (
-                            <TouchableOpacity
-                                style={[styles.btn, styles.btnDismiss, { backgroundColor: cfg.color }]}
-                                onPress={onDismiss}
-                                activeOpacity={0.85}
-                            >
-                                <Text style={styles.btnDismissText}>
-                                    {confirmText || 'OK'}
-                                </Text>
-                            </TouchableOpacity>
+                            </View>
                         )}
                     </View>
+
+                    {/* The Pop-out Icon Bubble */}
+                    <View style={[styles.bubbleWrap, { backgroundColor: cfg.bubbleColor }]}>
+                        <MaterialIcons name={cfg.icon} size={28} color={cfg.textColor} />
+                    </View>
+                    {/* Bubble Tail */}
+                    <View style={[styles.bubbleTail, { borderTopColor: cfg.bubbleColor }]} />
+
                 </Animated.View>
             </Animated.View>
         </Modal>
@@ -163,82 +166,132 @@ const { width } = Dimensions.get('window');
 const styles = StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        backgroundColor: 'rgba(0,0,0,0.6)',
         justifyContent: 'center',
         alignItems: 'center',
-        paddingHorizontal: 32,
+        paddingHorizontal: 20,
+    },
+    wrapper: {
+        width: width - 40,
+        maxWidth: 400,
+        // Overflow visible allows the bubble to be drawn outside
     },
     card: {
-        width: width - 64,
-        backgroundColor: '#fff',
-        borderRadius: 24,
-        paddingHorizontal: 28,
-        paddingTop: 32,
+        borderRadius: 20,
+        paddingHorizontal: 24,
+        paddingTop: 36, // leave room for bubble
         paddingBottom: 24,
-        alignItems: 'center',
-        elevation: 20,
+        overflow: 'hidden',
+        elevation: 10,
         shadowColor: '#000',
-        shadowOpacity: 0.2,
-        shadowRadius: 24,
-        shadowOffset: { width: 0, height: 8 },
-    },
-    iconCircle: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
-        alignItems: 'center',
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 5 },
+        minHeight: 120,
         justifyContent: 'center',
-        marginBottom: 16,
+    },
+    closeBtn: {
+        position: 'absolute',
+        top: 16,
+        right: 16,
+        zIndex: 10,
+        padding: 4,
     },
     title: {
-        fontSize: 18,
-        fontWeight: '800',
-        textAlign: 'center',
+        fontSize: 22,
+        fontWeight: '700',
         marginBottom: 8,
+        marginLeft: 4,
     },
     message: {
-        fontSize: 14,
-        color: '#6B5344',
-        textAlign: 'center',
-        lineHeight: 21,
-        marginBottom: 24,
+        fontSize: 15,
+        lineHeight: 22,
+        opacity: 0.9,
+        marginLeft: 4,
     },
+    bubbleWrap: {
+        position: 'absolute',
+        top: -24,
+        left: 20,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 2 },
+    },
+    bubbleTail: {
+        position: 'absolute',
+        top: 24,
+        left: 24,
+        width: 0,
+        height: 0,
+        backgroundColor: 'transparent',
+        borderStyle: 'solid',
+        borderLeftWidth: 12,
+        borderRightWidth: 12,
+        borderTopWidth: 16,
+        borderLeftColor: 'transparent',
+        borderRightColor: 'transparent',
+        // borderTopColor applied dynamically
+        transform: [{ rotate: '-45deg' }],
+        zIndex: -1,
+    },
+    // Background Splats
+    splat1: {
+        position: 'absolute',
+        width: 140,
+        height: 140,
+        borderRadius: 70,
+        bottom: -50,
+        left: -40,
+        opacity: 0.8,
+    },
+    splat2: {
+        position: 'absolute',
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        bottom: 20,
+        left: 60,
+        opacity: 0.6,
+    },
+    splat3: {
+        position: 'absolute',
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        bottom: 50,
+        left: 110,
+        opacity: 0.7,
+    },
+    // Buttons
     btnRow: {
         flexDirection: 'row',
         gap: 12,
-        width: '100%',
+        marginTop: 24,
     },
     btn: {
         flex: 1,
-        height: 48,
-        borderRadius: 14,
-        alignItems: 'center',
+        height: 44,
+        borderRadius: 22,
         justifyContent: 'center',
-    },
-    btnCancel: {
-        backgroundColor: '#F5F0EB',
-        borderWidth: 1,
-        borderColor: '#EAE0D8',
-    },
-    btnCancelText: {
-        fontSize: 15,
-        fontWeight: '700',
-        color: '#6B5344',
+        alignItems: 'center',
     },
     btnConfirm: {
-        elevation: 2,
+        backgroundColor: '#FFFFFF',
+    },
+    btnText: {
+        fontSize: 15,
+        fontWeight: '600',
     },
     btnConfirmText: {
         fontSize: 15,
         fontWeight: '700',
-        color: '#fff',
-    },
-    btnDismiss: {
-        elevation: 2,
-    },
-    btnDismissText: {
-        fontSize: 15,
-        fontWeight: '700',
-        color: '#fff',
+        color: '#333333',
     },
 });

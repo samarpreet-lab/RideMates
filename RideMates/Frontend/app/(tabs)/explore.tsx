@@ -162,7 +162,7 @@ export default function HomeScreen() {
       cancelText: 'Cancel',
       onConfirm: async () => {
         await deleteToken();
-        router.replace('/(tabs)/index' as any);
+        router.replace('/(tabs)' as any);
       },
     });
   };
@@ -282,15 +282,6 @@ export default function HomeScreen() {
         trustColor={trustColor}
         isFaculty={isFaculty}
       />
-
-      {/* -- Floating "My Location" button -------------------------------- */}
-      <TouchableOpacity
-        style={s.myLocationBtn}
-        onPress={() => showAlert({ type: 'info', title: 'Location', message: 'Location tracking coming soon!' })}
-        activeOpacity={0.8}
-      >
-        <MaterialIcons name="my-location" size={22} color="#C24E00" />
-      </TouchableOpacity>
 
       {/* -- Bottom Command Sheet ----------------------------------------- */}
       <BottomCommandSheet

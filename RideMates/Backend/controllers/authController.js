@@ -208,69 +208,60 @@ async function sendOtp(req, res) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RideMates Entry Pass</title>
+  <title>RideMates Verification</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #eceff1; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">
+<body style="margin: 0; padding: 0; background-color: #F5F0EB; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
   
-  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="padding: 40px 10px; background-color: #eceff1;">
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="padding: 40px 20px; background-color: #F5F0EB;">
     <tr>
       <td align="center">
         
-        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 450px; background-color: #ffffff; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); overflow: hidden;">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 500px; background-color: #ffffff; border-radius: 16px; border: 1px solid #EAE0D8; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
           
+          <!-- Header -->
           <tr>
-            <td style="background-color: #1a1a24; padding: 30px 20px 20px 20px; text-align: center;">
-              <h1 style="margin: 0; color: #ff8c42; font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px;">RideMates</h1>
-              <p style="margin: 5px 0 0 0; color: #8e8e9e; font-size: 12px; letter-spacing: 1px;">SECURE ENTRY PASS</p>
+            <td style="padding: 32px 32px 0 32px; text-align: left;">
+              <h1 style="margin: 0; color: #C24E00; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">RideMates</h1>
             </td>
           </tr>
 
+          <!-- Content -->
           <tr>
-            <td style="background-color: #1a1a24;">
-              <table border="0" cellpadding="0" cellspacing="0" width="100%">
-                <tr>
-                  <td width="20" style="background-color: #eceff1; border-radius: 0 20px 20px 0;">&nbsp;</td>
-                  <td style="border-top: 2px dashed #3f3f4e;">&nbsp;</td>
-                  <td width="20" style="background-color: #eceff1; border-radius: 20px 0 0 20px;">&nbsp;</td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-
-          <tr>
-            <td style="background-color: #1a1a24; padding: 10px 30px 40px 30px; text-align: center;">
-              <p style="margin: 0 0 10px 0; color: #ffffff; font-size: 14px;">PASSENGER</p>
-              <p style="margin: 0 0 25px 0; color: #ff8c42; font-size: 18px; font-weight: bold;">${escapeHtml(displayName)}</p>
+            <td style="padding: 32px; text-align: left;">
+              <p style="margin: 0 0 16px 0; color: #1E1610; font-size: 16px; font-weight: 600;">Hi ${escapeHtml(displayName)},</p>
               
-              <p style="margin: 0 0 10px 0; color: #8e8e9e; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Authorization Code</p>
+              <p style="margin: 0 0 32px 0; color: #6B5344; font-size: 15px; line-height: 1.6;">
+                We received a request to access your account. Please use the authorization code below to securely log in.
+              </p>
               
-              <div style="background-color: #ffb703; padding: 15px; border-radius: 8px; border: 2px solid #fb8500; display: inline-block; min-width: 250px;">
-                <p style="margin: 0; font-family: 'Courier New', Courier, monospace; font-size: 40px; font-weight: 900; color: #023047; letter-spacing: 16px; padding-left: 16px;">
+              <!-- OTP Box -->
+              <div style="background-color: #FAF7F4; border: 1px solid #EAE0D8; border-radius: 12px; padding: 24px; text-align: center; margin-bottom: 32px;">
+                <p style="margin: 0; color: #A8937F; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Verification Code</p>
+                <div style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 42px; font-weight: 800; color: #1E1610; letter-spacing: 12px; margin-left: 12px;">
                   ${otp}
-                </p>
+                </div>
               </div>
 
-              <p style="margin: 25px 0 0 0; color: #8e8e9e; font-size: 12px;">
-                ⏱ Valid for exactly <strong style="color: #ffffff;">10 minutes</strong>.
+              <p style="margin: 0; color: #6B5344; font-size: 14px; line-height: 1.5;">
+                This code will expire in <strong style="color: #1E1610; font-weight: 700;">10 minutes</strong>.
               </p>
             </td>
           </tr>
 
+          <!-- Footer -->
           <tr>
-            <td style="background-color: #f8f9fa; padding: 20px 30px; text-align: left; border-top: 1px solid #eeeeee;">
-              <p style="margin: 0 0 5px 0; font-size: 11px; color: #e63946; font-weight: bold; text-transform: uppercase;">
-                ⚠️ Security Notice
-              </p>
-              <p style="margin: 0; font-size: 11px; color: #6c757d; line-height: 1.5;">
-                Do not share this pass. Drivers will never ask for this code. If you did not request this, ignore this email.
+            <td style="background-color: #FAF7F4; padding: 24px 32px; text-align: left; border-top: 1px solid #EAE0D8;">
+              <p style="margin: 0 0 4px 0; font-size: 12px; color: #C24E00; font-weight: 700;">Security Notice</p>
+              <p style="margin: 0; font-size: 12px; color: #A8937F; line-height: 1.5;">
+                Never share this code with anyone. RideMates drivers and staff will never ask for your verification code. If you didn't request this email, you can safely ignore it.
               </p>
             </td>
           </tr>
 
         </table>
         
-        <p style="margin: 20px 0 0 0; font-size: 11px; color: #adb5bd; text-align: center;">
-          Sent to ${email}
+        <p style="margin: 24px 0 0 0; font-size: 12px; color: #A8937F; text-align: center;">
+          Sent securely to ${email}
         </p>
 
       </td>
