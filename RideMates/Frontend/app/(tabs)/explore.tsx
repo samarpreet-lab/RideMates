@@ -162,7 +162,7 @@ export default function HomeScreen() {
       cancelText: 'Cancel',
       onConfirm: async () => {
         await deleteToken();
-        router.replace('/(tabs)' as any);
+        router.replace('/(tabs)/login');
       },
     });
   };

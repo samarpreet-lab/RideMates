@@ -8,7 +8,7 @@
 // =============================================================================
 
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Linking, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { ds } from './styles';
 import { Ride, formatDepartureTime } from '../Explore/constants';
@@ -24,22 +24,37 @@ interface BookingData {
 interface Props {
     ride: Ride;
     booking: BookingData;
+    passengerName?: string;
+    isPending?: boolean;
     onDone: () => void;
 }
 
-export default function BookingSuccessSheet({ ride, booking, onDone }: Props) {
+export default function BookingSuccessSheet({ ride, booking, passengerName, isPending = false, onDone }: Props) {
     const hasPhone = !!ride.driver_phone;
 
-    const handleWhatsApp = () => {
-        const phone = ride.driver_phone?.replace(/[^0-9]/g, '') || '';
-        const message = `Hi ${ride.driver_name}! I just booked ${booking.seats_booked} seat(s) on your RideMates ride from ${ride.origin_city} → ${ride.destination_city} on ${formatDepartureTime(ride.departure_time)}. Looking forward to it!`;
-        const url = `https://wa.me/91${phone}?text=${encodeURIComponent(message)}`;
-        Linking.openURL(url).catch(() => { });
+    const handleWhatsApp = async () => {
+        const raw = ride.driver_phone?.replace(/\D/g, '') || '';
+        const finalPhone = raw.length === 10 ? `91${raw}` : raw;
+        const name = passengerName?.trim() || 'A passenger';
+        const message =
+            `Hi ${ride.driver_name}! I'm ${name} from RideMates. 🚗\n` +
+            `I just booked a seat on your ride from *${ride.origin_city}* to *${ride.destination_city}*.\n` +
+            `Where exactly should we meet for pickup?`;
+        const url = `https://wa.me/${finalPhone}?text=${encodeURIComponent(message)}`;
+        const canOpen = await Linking.canOpenURL(url);
+        if (canOpen) {
+            await Linking.openURL(url).catch(() => {});
+        } else {
+            Alert.alert('WhatsApp Not Found', 'WhatsApp is not installed on this device.');
+        }
     };
 
-    const handleCall = () => {
-        const phone = ride.driver_phone || '';
-        Linking.openURL(`tel:${phone}`).catch(() => { });
+    const handleCall = async () => {
+        const url = `tel:${ride.driver_phone || ''}`;
+        const canOpen = await Linking.canOpenURL(url);
+        if (canOpen) {
+            await Linking.openURL(url).catch(() => {});
+        }
     };
 
     return (
@@ -48,11 +63,17 @@ export default function BookingSuccessSheet({ ride, booking, onDone }: Props) {
                 {/* Success Header */}
                 <View style={ds.successTop}>
                     <View style={ds.successIconWrap}>
-                        <MaterialIcons name="check-circle" size={44} color="#C24E00" />
+                        <MaterialIcons
+                            name={isPending ? 'hourglass-top' : 'check-circle'}
+                            size={44}
+                            color={isPending ? '#f59e0b' : '#C24E00'}
+                        />
                     </View>
-                    <Text style={ds.successTitle}>Seat Booked!</Text>
+                    <Text style={ds.successTitle}>{isPending ? 'Request Sent!' : 'Seat Booked!'}</Text>
                     <Text style={ds.successSub}>
-                        Your booking with {ride.driver_name} is confirmed
+                        {isPending
+                            ? `Your request has been sent to ${ride.driver_name}. You\'ll be notified once they accept.`
+                            : `Your booking with ${ride.driver_name} is confirmed`}
                     </Text>
                 </View>
 
@@ -92,7 +113,8 @@ export default function BookingSuccessSheet({ ride, booking, onDone }: Props) {
                     </View>
                 </View>
 
-                {/* Contact Driver */}
+                {/* Contact Driver — only shown once booking is confirmed */}
+                {!isPending && (
                 <View style={ds.handoffCard}>
                     <Text style={ds.handoffTitle}>CONTACT DRIVER</Text>
 
@@ -118,11 +140,11 @@ export default function BookingSuccessSheet({ ride, booking, onDone }: Props) {
                         </View>
                     ) : (
                         <Text style={ds.handoffFallback}>
-                            Driver has not shared contact details yet.{'\n'}
-                            You'll coordinate at the pickup point.
+                            Driver has not linked a phone number. Check back later.
                         </Text>
                     )}
                 </View>
+                )}
 
                 {/* Done Button */}
                 <TouchableOpacity style={ds.doneBtn} onPress={onDone} activeOpacity={0.87}>

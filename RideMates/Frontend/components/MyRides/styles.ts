@@ -156,6 +156,41 @@ export const s = StyleSheet.create({
         color: '#D9622A',
     },
 
+    // WhatsApp + Cancel side-by-side action row (passenger confirmed bookings)
+    actionBtnRow: {
+        flexDirection: 'row',
+        gap: 8,
+        marginTop: 14,
+    },
+    actionBtn: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 10,
+        borderRadius: 12,
+        borderWidth: 1,
+    },
+    whatsappActionBtn: {
+        backgroundColor: '#FEF0E4',
+        borderColor: '#FCDCBF',
+    },
+    whatsappActionBtnText: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#C24E00',
+    },
+    cancelActionBtn: {
+        backgroundColor: '#FFF6F5',
+        borderColor: '#FCDCBF',
+    },
+    cancelActionBtnText: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#D9622A',
+    },
+
     // "Booked" banner for driver's published rides that have bookings
     bookedBanner: {
         flexDirection: 'row',

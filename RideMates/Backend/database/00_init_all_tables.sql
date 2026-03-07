@@ -156,7 +156,7 @@ CREATE TABLE bookings (
     passenger_id        INT NOT NULL                     COMMENT 'FK → users.id (who booked the seat)',
     seats_booked        TINYINT DEFAULT 1                COMMENT 'Number of seats reserved',
     price_paid          DECIMAL(8, 2) NOT NULL           COMMENT 'Total price paid for all booked seats',
-    status              ENUM('confirmed', 'cancelled', 'completed') DEFAULT 'confirmed' COMMENT 'Booking status',
+    status              ENUM('pending', 'confirmed', 'cancelled', 'completed') DEFAULT 'confirmed' COMMENT 'Booking status — pending = awaiting driver approval',
     is_reported         BOOLEAN DEFAULT FALSE            COMMENT 'TRUE if a report was filed involving this booking',
     cancellation_penalty INT DEFAULT 0                   COMMENT 'Trust points deducted for late cancel (0, 2, or 5)',
     booked_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'When the booking was made',

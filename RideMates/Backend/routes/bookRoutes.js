@@ -12,10 +12,12 @@
 
 const express = require('express');
 const router = express.Router();
-const { bookSeat, getMyBookings, cancelBooking } = require('../controllers/bookController');
+const { bookSeat, getMyBookings, cancelBooking, acceptBooking, rejectBooking } = require('../controllers/bookController');
 
 router.post('/new', bookSeat);
 router.get('/my', getMyBookings);
 router.put('/:id/cancel', cancelBooking);
+router.put('/:id/accept', acceptBooking);
+router.put('/:id/reject', rejectBooking);
 
 module.exports = router;

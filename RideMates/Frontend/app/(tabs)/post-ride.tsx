@@ -103,7 +103,7 @@ export default function PostRideScreen() {
     } catch (error: any) {
       if (error.response?.status === 401) {
         await deleteToken();
-        router.replace('/(tabs)' as any);
+        router.replace('/(tabs)/login');
       }
     } finally {
       setLoading(false);

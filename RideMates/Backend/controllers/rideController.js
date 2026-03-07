@@ -12,7 +12,7 @@
 // =============================================================================
 
 const pool = require('../config/db');
-const { calculatePrice, calculatePerSeatPrice } = require('../utils/priceCalculator');
+const { calculatePrice, calculatePerSeatPrice, calculateCancellationPenalty } = require('../utils/priceCalculator');
 
 
 // =============================================================================
@@ -176,6 +176,7 @@ async function searchRides(req, res) {
         AND r.destination_city = ?
         AND r.available_seats > 0
         AND r.status = 'active'
+        AND r.departure_time > NOW()
     `;
     const params = [origin, destination];
 
@@ -253,11 +254,25 @@ async function getRideById(req, res) {
                 pu.trust_score AS passenger_trust_score
          FROM bookings b
          JOIN users pu ON b.passenger_id = pu.id
-         WHERE b.ride_id = ? AND b.status IN ('confirmed', 'completed')
+         WHERE b.ride_id = ? AND b.status IN ('pending', 'confirmed', 'completed')
          ORDER BY b.booked_at ASC`,
         [rideId]
       );
       rideData.passengers = passengers;
+    }
+
+    // If the requesting user is a passenger, tell them about their own booking
+    if (req.user && req.user.id !== rideData.driver_id) {
+      const [myBookings] = await pool.query(
+        `SELECT id AS booking_id, seats_booked, price_paid, status AS booking_status
+         FROM bookings
+         WHERE ride_id = ? AND passenger_id = ?
+         LIMIT 1`,
+        [rideId, req.user.id]
+      );
+      if (myBookings.length > 0) {
+        rideData.my_booking = myBookings[0];
+      }
     }
 
     res.status(200).json({
@@ -325,6 +340,18 @@ async function updateRide(req, res) {
     const values = [];
 
     if (departure_time) {
+      // --- Lock: cannot change departure time if passengers have already booked ---
+      const [[{ bookings }]] = await pool.query(
+        'SELECT COUNT(*) AS bookings FROM bookings WHERE ride_id = ? AND status = ?',
+        [rideId, 'confirmed']
+      );
+      if (bookings > 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'You cannot change the departure time because passengers have already booked. Please cancel and repost the ride.',
+          error: 'RIDE_HAS_PASSENGERS',
+        });
+      }
       updates.push('departure_time = ?');
       values.push(departure_time);
     }
@@ -412,7 +439,7 @@ async function cancelRide(req, res) {
 
     // --- Check ownership ---
     const [rides] = await pool.query(
-      'SELECT driver_id, status FROM rides WHERE id = ?',
+      'SELECT driver_id, status, departure_time FROM rides WHERE id = ?',
       [rideId]
     );
 
@@ -438,6 +465,23 @@ async function cancelRide(req, res) {
         message: 'This ride is already ' + rides[0].status + '.',
         error: 'RIDE_NOT_ACTIVE',
       });
+    }
+
+    // --- Driver cancellation penalty: mirrors the passenger penalty logic ---
+    // If confirmed passengers exist and cancellation is within the penalty window,
+    // deduct Trust Points from the driver — mutual accountability (SRS 8.3).
+    const [confirmedBookings] = await pool.query(
+      'SELECT COUNT(*) AS cnt FROM bookings WHERE ride_id = ? AND status = ?',
+      [rideId, 'confirmed']
+    );
+    if (confirmedBookings[0].cnt > 0) {
+      const { penalty } = calculateCancellationPenalty(rides[0].departure_time, new Date());
+      if (penalty > 0) {
+        await pool.query(
+          'UPDATE users SET trust_score = trust_score - ? WHERE id = ?',
+          [penalty, userId]
+        );
+      }
     }
 
     // --- Cancel the ride ---
@@ -480,7 +524,7 @@ async function completeRide(req, res) {
 
     // --- Check ownership ---
     const [rides] = await pool.query(
-      'SELECT driver_id, status FROM rides WHERE id = ?',
+      'SELECT driver_id, status, departure_time FROM rides WHERE id = ?',
       [rideId]
     );
 
@@ -505,6 +549,15 @@ async function completeRide(req, res) {
         success: false,
         message: 'Only active rides can be completed.',
         error: 'RIDE_NOT_ACTIVE',
+      });
+    }
+
+    // --- Time Lock: cannot complete a ride before it was scheduled to depart ---
+    if (new Date() < new Date(rides[0].departure_time)) {
+      return res.status(400).json({
+        success: false,
+        message: 'You cannot mark a ride as complete before its scheduled departure time.',
+        error: 'RIDE_NOT_DEPARTED',
       });
     }
 
@@ -548,17 +601,20 @@ async function getMyRides(req, res) {
     const userId = req.user.id;
 
     // --- Rides I posted as a driver ---
+    // Time-boxed to the last 30 days + future rides to keep the query fast.
     const [postedRides] = await pool.query(
       `SELECT r.*, 'driver' AS my_role,
               (SELECT COUNT(*) FROM bookings b
                WHERE b.ride_id = r.id AND b.status IN ('confirmed', 'completed')) AS booking_count
        FROM rides r
        WHERE r.driver_id = ?
+         AND r.departure_time >= NOW() - INTERVAL 30 DAY
        ORDER BY r.departure_time DESC`,
       [userId]
     );
 
     // --- Rides I booked as a passenger ---
+    // Same 30-day time-box applied here.
     const [bookedRides] = await pool.query(
       `SELECT r.*, b.id AS booking_id, b.seats_booked, b.price_paid, b.status AS booking_status,
               'passenger' AS my_role,
@@ -567,6 +623,7 @@ async function getMyRides(req, res) {
        JOIN rides r ON b.ride_id = r.id
        JOIN users u ON r.driver_id = u.id
        WHERE b.passenger_id = ?
+         AND r.departure_time >= NOW() - INTERVAL 30 DAY
        ORDER BY r.departure_time DESC`,
       [userId]
     );

@@ -56,6 +56,7 @@ export default function RideDetailsScreen() {
     const [isEditModalVisible, setEditModalVisible] = useState(false);
     const [seatsSelected, setSeatsSelected] = useState(1);
     const [booking, setBooking] = useState<BookingData | null>(null);
+    const [myBooking, setMyBooking] = useState<any>(null);
     const [isBooking, setIsBooking] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
 
@@ -63,6 +64,8 @@ export default function RideDetailsScreen() {
     const fetchRide = async () => {
         setState('loading');
         setErrorMsg('');
+        // reset any previous booking result (important when revisiting same ride)
+        setBooking(null);
         try {
             const [res, profileRes] = await Promise.all([
                 api.get(`/rides/${rideId}`),
@@ -71,6 +74,11 @@ export default function RideDetailsScreen() {
 
             if (res.data.success) {
                 setRide(res.data.data);
+                if (res.data.data.my_booking) {
+                    setMyBooking(res.data.data.my_booking);
+                } else {
+                    setMyBooking(null);
+                }
                 if (profileRes.data.success) {
                     setProfile(profileRes.data.data);
                 }
@@ -115,6 +123,44 @@ export default function RideDetailsScreen() {
         } finally {
             setIsBooking(false);
         }
+    };
+
+    // ─── Handle booking approval / rejection (driver only) ─────────────────
+    const handleAcceptBooking = async (bookingId: number) => {
+        try {
+            const res = await api.put(`/bookings/${bookingId}/accept`);
+            if (res.data.success) {
+                showAlert({ type: 'success', title: 'Accepted', message: 'Booking confirmed for the passenger.' });
+                await fetchRide();
+            } else {
+                showAlert({ type: 'error', title: 'Error', message: res.data.message || 'Could not accept booking.' });
+            }
+        } catch (err: any) {
+            showAlert({ type: 'error', title: 'Error', message: err.response?.data?.message || 'Failed to accept booking.' });
+        }
+    };
+
+    const handleRejectBooking = (bookingId: number) => {
+        showAlert({
+            type: 'confirm',
+            title: 'Reject Request',
+            message: 'Are you sure you want to reject this booking request?',
+            cancelText: 'No',
+            confirmText: 'Yes, Reject',
+            onConfirm: async () => {
+                try {
+                    const res = await api.put(`/bookings/${bookingId}/reject`);
+                    if (res.data.success) {
+                        showAlert({ type: 'success', title: 'Rejected', message: 'Booking request rejected.' });
+                        await fetchRide();
+                    } else {
+                        showAlert({ type: 'error', title: 'Error', message: res.data.message || 'Could not reject booking.' });
+                    }
+                } catch (err: any) {
+                    showAlert({ type: 'error', title: 'Error', message: err.response?.data?.message || 'Failed to reject booking.' });
+                }
+            },
+        });
     };
 
     // ─── Handle Driver Ride Edits ──────────────────────────────────────────
@@ -202,7 +248,15 @@ export default function RideDetailsScreen() {
 
     // ─── Booking success state ────────────────────────────────────────────
     if (state === 'success' && ride && booking) {
-        return <BookingSuccessSheet ride={ride} booking={booking} onDone={handleDone} />;
+        return (
+            <BookingSuccessSheet
+                ride={ride}
+                booking={booking}
+                passengerName={profile?.full_name || ''}
+                isPending={!ride.instant_booking}
+                onDone={handleDone}
+            />
+        );
     }
 
     // ─── Main ride detail view ────────────────────────────────────────────
@@ -212,7 +266,8 @@ export default function RideDetailsScreen() {
         (parseFloat(String(ride.capped_price)) / Math.max(ride.available_seats, 1)) * 100
     ) / 100;
     const totalPrice = Math.round(perSeatPrice * seatsSelected * 100) / 100;
-    const canBook = ride.status === 'active' && ride.available_seats > 0;
+    const hasMyBooking = myBooking && myBooking.booking_status !== 'cancelled';
+    const canBook = ride.status === 'active' && ride.available_seats > 0 && !hasMyBooking;
     const isDriver = profile?.id === ride.driver_id;
 
     return (
@@ -236,9 +291,42 @@ export default function RideDetailsScreen() {
                 <RouteTimeline ride={ride} />
                 <RideBadges ride={ride} />
                 <PriceBreakdown ride={ride} seatsSelected={seatsSelected} />
-                {isDriver && ride.passengers && ride.passengers.length > 0 && (
-                    <PassengerList passengers={ride.passengers} />
+
+                {/* show my booking summary if I already booked */}
+                {!isDriver && hasMyBooking && (
+                    <View style={{ padding: 16, backgroundColor: '#FFF7E8', borderRadius: 12, marginVertical: 12 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#C24E00' }}>
+                            You have a {myBooking.booking_status} booking for {myBooking.seats_booked} seat{myBooking.seats_booked>1?'s':''}.
+                        </Text>
+                        {myBooking.booking_status === 'pending' && (
+                            <TouchableOpacity
+                                style={[ds.cancelRideBtn, { marginTop: 8 }]}
+                                onPress={async () => {
+                                    try {
+                                        const res = await api.put(`/bookings/${myBooking.booking_id}/cancel`);
+                                        if (res.data.success) {
+                                            showAlert({type:'success', title:'Request withdrawn', message:res.data.message});
+                                            await fetchRide();
+                                        }
+                                    } catch(e:any){showAlert({type:'error',title:'Error',message:e.response?.data?.message||'Could not withdraw.'});}
+                                }}
+                            >
+                                <MaterialIcons name="cancel" size={18} color="#ef4444" />
+                                <Text style={[ds.cancelRideBtnText,{marginLeft:6}]}>Withdraw Request</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
                 )}
+
+                {isDriver && ride.passengers && ride.passengers.length > 0 && (
+                    <PassengerList
+                        passengers={ride.passengers}
+                        rideInfo={{ origin_city: ride.origin_city, destination_city: ride.destination_city }}
+                        onAccept={handleAcceptBooking}
+                        onReject={handleRejectBooking}
+                    />
+                )}
+
                 {canBook && !isDriver && (
                     <SeatSelector
                         seats={seatsSelected}

@@ -56,7 +56,7 @@ async function bookSeat(req, res) {
     // FOR UPDATE tells MySQL: "Lock this row. Any other transaction trying
     // to read/write it must wait until I COMMIT or ROLLBACK."
     const [rideData] = await connection.query(
-      `SELECT available_seats, capped_price, status, driver_id, is_women_only
+      `SELECT available_seats, capped_price, status, driver_id, is_women_only, instant_booking
        FROM rides WHERE id = ? FOR UPDATE`,
       [ride_id]
     );
@@ -125,11 +125,18 @@ async function bookSeat(req, res) {
     // regardless of how many seats are still available.
     const price_paid = Math.round(parseFloat(ride.capped_price) * seatsRequested);
 
-    // --- Step 4: Decrement seats + create/reactivate booking atomically ---
-    await connection.query(
-      'UPDATE rides SET available_seats = available_seats - ? WHERE id = ?',
-      [seatsRequested, ride_id]
-    );
+    // --- Step 4: Determine booking status based on instant_booking flag ---
+    // Instant Booking  → confirmed immediately, seats decremented now.
+    // Manual Approval  → pending; seats NOT decremented yet (held only after
+    //                    the driver explicitly accepts via PUT /bookings/:id/accept).
+    const bookingStatus = ride.instant_booking ? 'confirmed' : 'pending';
+
+    if (ride.instant_booking) {
+      await connection.query(
+        'UPDATE rides SET available_seats = available_seats - ? WHERE id = ?',
+        [seatsRequested, ride_id]
+      );
+    }
 
     // Check if there's a previously cancelled booking for this passenger+ride
     const [existingBooking] = await connection.query(
@@ -142,15 +149,15 @@ async function bookSeat(req, res) {
       // Reactivate the cancelled booking
       bookingId = existingBooking[0].id;
       await connection.query(
-        `UPDATE bookings SET status = 'confirmed', seats_booked = ?, price_paid = ?, cancellation_penalty = 0 WHERE id = ?`,
-        [seatsRequested, price_paid, bookingId]
+        `UPDATE bookings SET status = ?, seats_booked = ?, price_paid = ?, cancellation_penalty = 0 WHERE id = ?`,
+        [bookingStatus, seatsRequested, price_paid, bookingId]
       );
     } else {
       // Insert a fresh booking
       const [bookingResult] = await connection.query(
-        `INSERT INTO bookings (ride_id, passenger_id, seats_booked, price_paid)
-         VALUES (?, ?, ?, ?)`,
-        [ride_id, passenger_id, seatsRequested, price_paid]
+        `INSERT INTO bookings (ride_id, passenger_id, seats_booked, price_paid, status)
+         VALUES (?, ?, ?, ?, ?)`,
+        [ride_id, passenger_id, seatsRequested, price_paid, bookingStatus]
       );
       bookingId = bookingResult.insertId;
     }
@@ -160,13 +167,18 @@ async function bookSeat(req, res) {
 
     res.status(201).json({
       success: true,
-      message: 'Seat booked successfully!',
+      message: ride.instant_booking
+        ? 'Seat booked successfully!'
+        : 'Booking request sent! Waiting for driver approval.',
       data: {
         booking_id: bookingId,
+        booking_status: bookingStatus,
         ride_id: parseInt(ride_id),
         seats_booked: seatsRequested,
         price_paid,
-        remaining_seats: ride.available_seats - seatsRequested,
+        remaining_seats: ride.instant_booking
+          ? ride.available_seats - seatsRequested
+          : ride.available_seats,
       },
     });
   } catch (error) {
@@ -281,11 +293,21 @@ async function cancelBooking(req, res) {
       });
     }
 
-    if (booking.status !== 'confirmed') {
+    if (booking.status !== 'confirmed' && booking.status !== 'pending') {
       return res.status(400).json({
         success: false,
         message: 'This booking is already ' + booking.status + '.',
         error: 'BOOKING_NOT_ACTIVE',
+      });
+    }
+
+    // Pending bookings can be withdrawn freely — no penalty, no seat to restore.
+    if (booking.status === 'pending') {
+      await pool.query("UPDATE bookings SET status = 'cancelled' WHERE id = ?", [bookingId]);
+      return res.status(200).json({
+        success: true,
+        message: 'Booking request withdrawn.',
+        data: { penalty: 0, tier: 'FREE' },
       });
     }
 
@@ -344,4 +366,119 @@ async function cancelBooking(req, res) {
 }
 
 
-module.exports = { bookSeat, getMyBookings, cancelBooking };
+module.exports = { bookSeat, getMyBookings, cancelBooking, acceptBooking, rejectBooking };
+
+
+// =============================================================================
+// PUT /api/bookings/:id/accept
+// =============================================================================
+// Driver accepts a pending booking. Confirms the booking and decrements
+// available_seats atomically (FOR UPDATE prevents a double-accept race).
+//
+// SRS: FR-BOOK-09 — Manual approval for non-instant-booking rides.
+// =============================================================================
+async function acceptBooking(req, res) {
+  const connection = await pool.getConnection();
+  try {
+    const bookingId = req.params.id;
+    const driverId = req.user.id;
+
+    await connection.beginTransaction();
+
+    // Lock both the booking and the ride row together to prevent a race where
+    // the driver double-taps Accept or two concurrent requests sneak through.
+    const [rows] = await connection.query(
+      `SELECT b.status AS booking_status, b.seats_booked, b.ride_id,
+              r.driver_id, r.available_seats
+       FROM bookings b
+       JOIN rides r ON b.ride_id = r.id
+       WHERE b.id = ? FOR UPDATE`,
+      [bookingId]
+    );
+
+    if (rows.length === 0) {
+      await connection.rollback();
+      connection.release();
+      return res.status(404).json({ success: false, message: 'Booking not found.', error: 'BOOKING_NOT_FOUND' });
+    }
+
+    const row = rows[0];
+
+    if (row.driver_id !== driverId) {
+      await connection.rollback();
+      connection.release();
+      return res.status(403).json({ success: false, message: 'Only the ride driver can accept bookings.', error: 'FORBIDDEN' });
+    }
+
+    if (row.booking_status !== 'pending') {
+      await connection.rollback();
+      connection.release();
+      return res.status(400).json({ success: false, message: 'Only pending bookings can be accepted.', error: 'BOOKING_NOT_PENDING' });
+    }
+
+    if (row.available_seats < row.seats_booked) {
+      await connection.rollback();
+      connection.release();
+      return res.status(400).json({ success: false, message: 'Not enough seats left to accept this request.', error: 'INSUFFICIENT_SEATS' });
+    }
+
+    await connection.query(`UPDATE bookings SET status = 'confirmed' WHERE id = ?`, [bookingId]);
+    await connection.query(
+      'UPDATE rides SET available_seats = available_seats - ? WHERE id = ?',
+      [row.seats_booked, row.ride_id]
+    );
+
+    await connection.commit();
+    res.status(200).json({ success: true, message: 'Booking accepted.' });
+  } catch (error) {
+    await connection.rollback();
+    console.error('Error in acceptBooking:', error);
+    res.status(500).json({ success: false, message: 'Something went wrong.', error: 'INTERNAL_ERROR' });
+  } finally {
+    connection.release();
+  }
+}
+
+
+// =============================================================================
+// PUT /api/bookings/:id/reject
+// =============================================================================
+// Driver rejects a pending booking. Marks it cancelled — no seat to restore
+// since pending bookings never decremented available_seats.
+//
+// SRS: FR-BOOK-09
+// =============================================================================
+async function rejectBooking(req, res) {
+  try {
+    const bookingId = req.params.id;
+    const driverId = req.user.id;
+
+    const [rows] = await pool.query(
+      `SELECT b.status AS booking_status, r.driver_id
+       FROM bookings b
+       JOIN rides r ON b.ride_id = r.id
+       WHERE b.id = ?`,
+      [bookingId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Booking not found.', error: 'BOOKING_NOT_FOUND' });
+    }
+
+    const row = rows[0];
+
+    if (row.driver_id !== driverId) {
+      return res.status(403).json({ success: false, message: 'Only the ride driver can reject bookings.', error: 'FORBIDDEN' });
+    }
+
+    if (row.booking_status !== 'pending') {
+      return res.status(400).json({ success: false, message: 'Only pending bookings can be rejected.', error: 'BOOKING_NOT_PENDING' });
+    }
+
+    await pool.query(`UPDATE bookings SET status = 'cancelled' WHERE id = ?`, [bookingId]);
+    res.status(200).json({ success: true, message: 'Booking request rejected.' });
+  } catch (error) {
+    console.error('Error in rejectBooking:', error);
+    res.status(500).json({ success: false, message: 'Something went wrong.', error: 'INTERNAL_ERROR' });
+  }
+}

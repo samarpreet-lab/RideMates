@@ -3,7 +3,7 @@
 // =============================================================================
 
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, Linking } from 'react-native';
 import { useAlert } from '../ui/AlertContext';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -53,6 +53,26 @@ export default function MyRideCard({ ride, viewMode, onCancelBooking }: MyRideCa
     // Can the passenger cancel this booking?
     const canCancel = viewMode === 'passenger' && status === 'confirmed';
 
+    // WhatsApp handoff — builds the wa.me deep-link and opens WhatsApp
+    const openWhatsApp = (phone: string, message: string) => {
+        const cleaned = phone.replace(/\D/g, '');
+        const finalPhone = cleaned.length === 10 ? `91${cleaned}` : cleaned;
+        const url = `https://wa.me/${finalPhone}?text=${encodeURIComponent(message)}`;
+        Linking.canOpenURL(url)
+            .then(can => { if (can) Linking.openURL(url).catch(() => {}); })
+            .catch(() => {});
+    };
+
+    // Passenger → Driver: post-booking coordination ("where is pickup?")
+    const handleContactDriver = () => {
+        if (!ride.driver_phone) return;
+        const msg =
+            `Hi ${ride.driver_name || 'Driver'}! I have a confirmed booking for your RideMates ride ` +
+            `from *${ride.origin_city}* to *${ride.destination_city}*. ` +
+            `Where exactly should we meet for pickup?`;
+        openWhatsApp(ride.driver_phone, msg);
+    };
+
     const handlePress = () => {
         router.push({
             pathname: '/(tabs)/ride-details',
@@ -81,7 +101,17 @@ export default function MyRideCard({ ride, viewMode, onCancelBooking }: MyRideCa
             message: `Are you sure you want to cancel your booking for ${ride.origin_city} → ${ride.destination_city}?\n\n${penaltyWarning}`,
             confirmText: 'Cancel Booking',
             cancelText: 'Keep Booking',
-            onConfirm: () => onCancelBooking?.(ride.booking_id),
+            onConfirm: () => {
+                onCancelBooking?.(ride.booking_id);
+                // Notify driver via WhatsApp about the cancellation
+                if (ride.driver_phone) {
+                    const msg =
+                        `Hi ${ride.driver_name || 'Driver'}! Sorry, I just had to cancel my booking ` +
+                        `for your *${ride.origin_city}* → *${ride.destination_city}* ride on RideMates. ` +
+                        `You can open up that seat for someone else. 🙏`;
+                    openWhatsApp(ride.driver_phone, msg);
+                }
+            },
         });
     };
 
@@ -146,16 +176,28 @@ export default function MyRideCard({ ride, viewMode, onCancelBooking }: MyRideCa
                 </View>
             </View>
 
-            {/* Cancel Booking Button (passenger confirmed only) */}
+            {/* Action row: WhatsApp contact + Cancel (passenger confirmed only) */}
             {canCancel && (
-                <TouchableOpacity
-                    style={s.cancelBookingBtn}
-                    activeOpacity={0.8}
-                    onPress={handleCancelBooking}
-                >
-                    <MaterialIcons name="cancel" size={16} color="#D9622A" />
-                    <Text style={s.cancelBookingBtnText}>Cancel Booking</Text>
-                </TouchableOpacity>
+                <View style={s.actionBtnRow}>
+                    {!!ride.driver_phone && (
+                        <TouchableOpacity
+                            style={[s.actionBtn, s.whatsappActionBtn]}
+                            activeOpacity={0.8}
+                            onPress={handleContactDriver}
+                        >
+                            <MaterialIcons name="chat" size={15} color="#C24E00" />
+                            <Text style={s.whatsappActionBtnText}>WhatsApp</Text>
+                        </TouchableOpacity>
+                    )}
+                    <TouchableOpacity
+                        style={[s.actionBtn, s.cancelActionBtn]}
+                        activeOpacity={0.8}
+                        onPress={handleCancelBooking}
+                    >
+                        <MaterialIcons name="cancel" size={15} color="#D9622A" />
+                        <Text style={s.cancelActionBtnText}>Cancel</Text>
+                    </TouchableOpacity>
+                </View>
             )}
         </TouchableOpacity>
     );
