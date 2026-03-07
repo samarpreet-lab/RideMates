@@ -23,6 +23,7 @@
 | 1.2 | February 28, 2026 | Project Team | v2.1 Blueprint: Ride Lifecycle completion trigger, tiered passenger cancellation penalties, pattern-match reporting shield (single report = warning only), schema additions (current_streak, bookings.is_reported, rides.completed_at) |
 | 1.3 | February 28, 2026 | Project Team | Tiered Pricing: vehicle-specific maintenance multipliers (bike/scooter 1.2x, auto 1.35x, car 1.5x), vehicle_type ENUM expanded to include 'scooter', Section 8.1 algorithm reworked with multi-vehicle worked examples |
 | 1.4 | March 1, 2026 | Project Team | OTP-only authentication: Backend-generated 6-digit OTPs with SMTP delivery replacing Firebase OTP; JWT session tokens issued by backend; removed password-based auth; added `user_otps` table, `send-otp` / `verify-otp` endpoints, OTP Handshake Algorithm (Section 8.5), rate limiting, brute-force protection |
+| 1.5 | March 2, 2026 | Project Team | BlaBlaCar-style per-seat pricing model: `driver_set_price` and `capped_price` now stored as **per-seat** values; added Green/Yellow zone guidance UI (Fair Price ≤ recommended, Within Range ≤ hard cap); fixed booking price-certainty bug (price_paid no longer divides by fluctuating `available_seats`); Section 8.1 rewritten with zone table and per-seat worked examples; FR-RIDE-02 and FR-BOOK-06 updated |
 
 ---
 
@@ -159,7 +160,7 @@ This document describes both the functional behavior of the system and the non-f
 |---|-----------|-----|
 | 1 | IEEE 830-1998 Standard for SRS | https://standards.ieee.org/standard/830-1998.html |
 | 2 | Firebase Authentication Docs | https://firebase.google.com/docs/auth |
-| 3 | Mapbox Geocoding API | https://docs.mapbox.com/api/search/geocoding/ |
+| 3 | Photon Geocoding API | https://photon.komoot.io/ |
 | 4 | Mapbox Directions API | https://docs.mapbox.com/api/navigation/directions/ |
 | 5 | React Native (Expo) Docs | https://docs.expo.dev/ |
 | 6 | Express.js Official Guide | https://expressjs.com/en/guide/ |
@@ -321,7 +322,7 @@ The system supports two user roles. A single registered user can operate in **bo
 |---|------------|----------------------|
 | D1 | SMTP Email Gateway | OTP emails cannot be delivered; users cannot register or login (they can retry once the service recovers) |
 | D2 | Aiven MySQL | All read/write operations fail; app shows error states |
-| D3 | Mapbox Geocoding API | Fallback geocoding fails for cities not in the local JSON dataset; core regional hubs remain functional via offline data |
+| D3 | Photon Geocoding API | Fallback geocoding fails for cities not in the local JSON dataset; core regional hubs remain functional via offline data. Photon is free and keyless, reducing external dependency risk |
 | D4 | Mapbox Directions API | Route polyline cannot be computed or displayed |
 | D5 | Device GPS (expo-location) | User's current location cannot be auto-detected; manual entry required |
 | D6 | Internet connectivity | All API calls and external service integrations fail |
@@ -403,7 +404,7 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 | Backend | Node.js + Express.js | 18.x LTS + 4.x | Non-blocking I/O for concurrent requests; JavaScript full-stack |
 | Database | MySQL (InnoDB) | 8.0 | ACID-compliant; supports transactions with row-level locking for concurrent booking |
 | Authentication | Backend OTP + JWT | Custom | Server-generated 6-digit OTPs delivered via SMTP; backend-issued JWTs (7-day expiry) for session management |
-| Maps — Geocoding | Local JSON + Mapbox Geocoding API (fallback) | v5 | Resolves regional hub coordinates offline; falls back to Mapbox for unknown cities |
+| Maps — Geocoding | Local JSON + Photon Geocoding API (fallback) | — | Resolves regional hub coordinates offline; falls back to Photon (free, no API key) for unknown cities with debounced search-as-you-type, location biasing near LPU (31.2536, 75.7037), and type filtering (city/town/village/district) |
 | Maps — Routing | Mapbox Directions API | v5 | Computes driving route with polyline geometry |
 | Device Location | expo-location | Latest | Native GPS access with permission management |
 | HTTP Client | Axios | Latest | Promise-based; request/response interceptors for token attachment |
@@ -463,7 +464,7 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 | ID | Requirement | Priority | Description |
 |----|------------|----------|-------------|
 | FR-RIDE-01 | Create Ride | Critical | An authenticated driver SHALL be able to post a ride with: origin city, destination city, GPS coordinates, distance, departure time, available seats, vehicle type, mileage, fuel type, and desired price. |
-| FR-RIDE-02 | Auto Price Calculation | Critical | The system SHALL auto-calculate `base_price` as `(distance_km × fuel_rate) / vehicle_mileage` and apply a **vehicle-specific maintenance multiplier** (1.2x for bikes/scooters, 1.35x for autos, 1.5x for cars) to establish the `max_allowed_price`. The `capped_price` SHALL be `MIN(driver_set_price, max_allowed_price)`. |
+| FR-RIDE-02 | Auto Price Calculation | Critical | The system SHALL auto-calculate `base_price` as `(distance_km × fuel_rate) / vehicle_mileage` and apply a **vehicle-specific maintenance multiplier** (1.2x for bikes/scooters, 1.35x for autos, 1.5x for cars). Per-seat zone boundaries SHALL be computed: `base_per_seat = base_price / seats`, `recommended_per_seat = base_per_seat × 1.2`, `max_per_seat = (base_price × multiplier) / seats`. The `capped_price` SHALL be `MIN(driver_set_price_per_seat, max_per_seat)` and stored **per seat** in the database. The UI SHALL display a **Green (Fair Price)** badge when `driver_price ≤ recommended_per_seat` and a **Yellow (Within Range)** badge otherwise. |
 | FR-RIDE-03 | Price Cap Enforcement | Critical | If the driver's set price exceeds the vehicle-specific max cap, the system SHALL clamp it to the cap value. The driver SHALL NOT be able to exceed this limit. The multiplier is determined by the ride's `vehicle_type`. |
 | FR-RIDE-04 | Search Rides | Critical | An authenticated user SHALL be able to search rides by `origin_city` and `destination_city`, with optional filters for `date` and `emergency_only`. |
 | FR-RIDE-05 | View Ride Details | High | The system SHALL return full ride details (including driver info, route, price breakdown) for a specific `ride_id`. |
@@ -485,7 +486,7 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 | FR-BOOK-03 | Atomic Seat Decrement | Critical | Within the transaction, `available_seats` SHALL be decremented by `seats_booked` and a booking record SHALL be inserted atomically. Both succeed or both fail. |
 | FR-BOOK-04 | Seat Availability Check | Critical | The system SHALL reject a booking if `seats_booked > available_seats`, returning a `400` error with message "Not enough seats available." |
 | FR-BOOK-05 | Duplicate Prevention | High | The system SHALL prevent a passenger from booking the same ride twice, enforced by a `UNIQUE KEY (ride_id, passenger_id)` constraint. Violation returns a `409` error. |
-| FR-BOOK-06 | Per-Seat Price | High | The system SHALL calculate `price_paid` as the per-seat share of the `capped_price` at booking time. |
+| FR-BOOK-06 | Price Certainty | High | The system SHALL store `capped_price` as a **per-seat** value in the `rides` table at ride creation time. At booking, `price_paid = capped_price × seats_booked`. This guarantees price certainty: every passenger pays the same per-seat rate regardless of how many seats remain when they book. |
 | FR-BOOK-07 | View My Bookings | Medium | An authenticated user SHALL be able to retrieve all their bookings via `GET /api/bookings/my`. |
 | FR-BOOK-08 | Cancel Booking | Medium | A passenger SHALL be able to cancel a confirmed booking. Upon cancellation, `available_seats` SHALL be incremented back. The system SHALL apply a tiered Trust Score penalty based on proximity to departure (see FR-BOOK-11). |
 | FR-BOOK-11 | Cancellation Penalty Tiers | High | Passenger booking cancellation penalties SHALL follow a tiered model: **(a)** Cancellation **> 4 hours** before departure → **0 penalty** (free cancellation). **(b)** Cancellation **≤ 4 hours but > 30 minutes** before departure → **−2 Trust Points**. **(c)** Cancellation **≤ 30 minutes** before departure → **−5 Trust Points** (equivalent to a No-Show). This protects drivers from last-minute seat loss. |
@@ -496,7 +497,7 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 
 | ID | Requirement | Priority | Description |
 |----|------------|----------|-------------|
-| FR-MAP-01 | Hybrid Geocoding | Critical | The system SHALL resolve GPS coordinates for city names via a **local JSON dataset** containing regional hub locations (e.g., Mukerian, Jalandhar, Phagwara). Mapbox Geocoding API SHALL be used only as a fallback for cities not found in the local dataset. Mapbox Directions API SHALL still be used for route polyline generation and distance computation. This hybrid approach ensures the app remains free and functional even when the Mapbox Geocoding quota is exhausted. |
+| FR-MAP-01 | Hybrid Geocoding | Critical | The system SHALL resolve GPS coordinates for city names via a **local JSON hub dataset** containing regional hub locations (e.g., Mukerian, Jalandhar, Phagwara). The **Photon Geocoding API** (photon.komoot.io) SHALL be used as the secondary fallback layer for cities not found in the local dataset, implementing: **(a) Debounce Mechanism:** API calls SHALL be debounced by 400–500 ms to prevent rate-limiting; each new keystroke cancels the prior pending request. **(b) Location Biasing:** Queries SHALL append `&lat=31.2536&lon=75.7037&location_bias_scale=0.5` to prioritize results near LPU, Punjab, India. **(c) Type Filtering:** Only results with `osm_value` of `city`, `town`, `village`, or `district` SHALL be shown, filtering out irrelevant POIs. **(d) Coordinate Normalization:** Photon returns coordinates as `[longitude, latitude]`; the system SHALL swap indices to `[latitude, longitude]` before storing. Photon requires no API key or credit card, ensuring the app remains free and functional. Mapbox Directions API SHALL still be used for route polyline generation and distance computation. |
 | FR-MAP-02 | Route Computation | Critical | The system SHALL compute the driving route between origin and destination using the Mapbox Directions API, returning a polyline geometry. |
 | FR-MAP-03 | Route Display | Critical | The frontend SHALL render the computed route as a visible polyline on a `react-native-maps` MapView component. |
 | FR-MAP-04 | Map Markers | High | The map SHALL display a green marker at the origin ("Pickup") and a red marker at the destination ("Drop-off"). |
@@ -556,7 +557,7 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 | External System | Interface Type | Protocol | Data Format |
 |----------------|---------------|----------|-------------|
 | SMTP Email Gateway | SMTP (Nodemailer) | SMTP/TLS | Email with 6-digit OTP code in body |
-| Mapbox Geocoding API | REST | HTTPS | JSON (GeoJSON features) |
+| Photon Geocoding API | REST | HTTPS | JSON (GeoJSON features — coordinates in [lng, lat] order) |
 | Mapbox Directions API | REST | HTTPS | JSON (GeoJSON geometry + route metadata) |
 | Aiven MySQL | TCP | mysql2 driver (SSL) | SQL queries / result sets |
 
@@ -567,7 +568,8 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 | Frontend ↔ Backend | HTTP/HTTPS | RESTful JSON API; `Authorization: Bearer <JWT>` header |
 | Backend ↔ MySQL | TCP (SSL) | mysql2 connection pool; max 10 connections; query parameterization |
 | Backend ↔ SMTP Gateway | SMTP/TLS | Nodemailer sends OTP emails via configured SMTP provider |
-| Frontend ↔ Mapbox | HTTPS | Direct API calls with `access_token` query parameter |
+| Frontend ↔ Photon | HTTPS | Direct API calls to `photon.komoot.io/api/?q=...` (no API key required) |
+| Frontend ↔ Mapbox | HTTPS | Directions API calls with `access_token` query parameter |
 
 ### 4.3 Non-Functional Requirements
 
@@ -687,7 +689,7 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 | `fuel_type` | ENUM('petrol','diesel','cng','electric') | DEFAULT 'petrol' | Fuel type |
 | `base_price` | DECIMAL(8,2) | NOT NULL | System-calculated base fuel cost |
 | `driver_set_price` | DECIMAL(8,2) | NOT NULL | Price set by driver (may be clamped) |
-| `capped_price` | DECIMAL(8,2) | NOT NULL | min(driver_set_price, vehicle-specific max cap) |
+| `capped_price` | DECIMAL(8,2) | NOT NULL | Per-seat final price = MIN(driver_set_price_per_seat, max_per_seat). Stored per-seat for price certainty (SRS v1.5) |
 | `is_emergency_route` | BOOLEAN | DEFAULT FALSE | Strike resilience flag |
 | `is_women_only` | BOOLEAN | DEFAULT FALSE | If true, only female-verified passengers may use Instant Booking on this ride |
 | `instant_booking` | BOOLEAN | DEFAULT FALSE | If true, passengers can auto-book without driver approval |
@@ -741,8 +743,8 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 | Data Element | Format | Valid Range | Source |
 |-------------|--------|-------------|--------|
 | Email | string | Must match `*@lpu.in` pattern | User input → Backend OTP → MySQL |
-| Latitude | DECIMAL(10,7) | -90.0000000 to +90.0000000 | Mapbox Geocoding API |
-| Longitude | DECIMAL(10,7) | -180.0000000 to +180.0000000 | Mapbox Geocoding API |
+| Latitude | DECIMAL(10,7) | -90.0000000 to +90.0000000 | Local JSON / Photon Geocoding API |
+| Longitude | DECIMAL(10,7) | -180.0000000 to +180.0000000 | Local JSON / Photon Geocoding API |
 | Distance (km) | DECIMAL(6,2) | 0.01 to 9999.99 | Mapbox Directions API |
 | Departure Time | ISO 8601 string | Any future datetime | User input → dayjs → UTC conversion |
 | Available Seats | TINYINT | 0 to 127 (practical: 1–6) | User input |
@@ -1304,57 +1306,75 @@ All error responses follow a consistent JSON structure:
 
 ## 8. Algorithms
 
-### 8.1 Pricing Algorithm (Tiered by Vehicle Type)
+### 8.1 Pricing Algorithm — Per-Seat Model (SRS v1.5)
 
-**Purpose:** Calculate a vehicle-specific capped ride price that ensures cost-sharing without commercial profit. Different vehicles incur different maintenance costs, so the price ceiling varies by type.
+**Purpose:** Calculate a vehicle-specific capped ride price that ensures cost-sharing without commercial profit. Prices are expressed and stored **per seat** so every passenger sees their exact price before booking regardless of fill level.
 
 **Maintenance Multiplier Table:**
 
 | Vehicle Type | Multiplier | Rationale |
 |-------------|------------|----------|
-| `bike` / `scooter` | 1.2x | Low maintenance, low wear-and-tear |
-| `auto` | 1.35x | Moderate maintenance, three-wheeler upkeep |
-| `car` | 1.5x | Highest maintenance — tyres, engine oil, insurance |
+| `bike` / `scooter` | 1.2× | Low maintenance, low wear-and-tear |
+| `auto` | 1.35× | Moderate maintenance, three-wheeler upkeep |
+| `car` | 1.5× | Highest maintenance — tyres, engine oil, insurance |
+
+**Price Zone Model (BlaBlaCar-style):**
+
+| Zone | Condition | UI Badge |
+|------|-----------|----------|
+| 🟢 Green — Fair Price | `driver_price ≤ recommended_per_seat` | `✓ Fair Price` (green) |
+| 🟡 Yellow — Within Range | `driver_price > recommended_per_seat AND ≤ max_per_seat` | `↑ Within Range` (yellow) |
+| 🔴 Red — Hard Cap | `driver_price > max_per_seat` | Slider blocked; price clamped |
 
 **Input Parameters:**
 
 | Parameter | Source | Type |
 |-----------|--------|------|
-| `distance_km` | Mapbox Directions API | DECIMAL |
+| `distance_km` | Haversine + 1.3× road factor | DECIMAL |
 | `fuel_rate` | `fuel_rates` table in MySQL | DECIMAL (₹/litre) |
 | `vehicle_mileage` | User input | DECIMAL (km/l) |
 | `vehicle_type` | User input (ride form) | ENUM('bike','scooter','auto','car') |
-| `driver_set_price` | User input via slider | DECIMAL (₹) |
+| `driver_set_price` | User input via slider (per seat) | DECIMAL (₹/seat) |
+| `available_seats` | User input (ride form) | INTEGER |
 
 **Algorithm (Pseudocode):**
 
 ```
-FUNCTION calculatePrice(distance_km, fuel_rate, vehicle_mileage, vehicle_type, driver_set_price):
+FUNCTION calculatePrice(distance_km, fuel_rate, vehicle_mileage, vehicle_type,
+                        driver_set_price, available_seats):
 
-    // Step 1: Calculate baseline fuel cost
-    base_cost = (distance_km × fuel_rate) / vehicle_mileage
+    seats = MAX(1, available_seats)
 
-    // Step 2: Lookup vehicle-specific maintenance multiplier
-    IF vehicle_type IN ('bike', 'scooter'):
-        multiplier = 1.2
-    ELSE IF vehicle_type == 'auto':
-        multiplier = 1.35
-    ELSE:   // 'car' or unknown — default to highest
-        multiplier = 1.5
+    // Step 1: Total raw fuel cost for the trip
+    base_price = (distance_km × fuel_rate) / vehicle_mileage
 
-    // Step 3: Calculate the maximum allowed price (vehicle-specific cap)
-    max_allowed = base_cost × multiplier
+    // Step 2: Vehicle-specific maintenance multiplier
+    IF vehicle_type IN ('bike', 'scooter'): multiplier = 1.2
+    ELSE IF vehicle_type == 'auto':         multiplier = 1.35
+    ELSE:                                   multiplier = 1.5  // car or default
 
-    // Step 4: Clamp driver's price to the cap
-    capped_price = MIN(driver_set_price, max_allowed)
+    // Step 3: Total legal ceiling (reference only — not stored per-seat)
+    max_allowed = base_price × multiplier
 
-    // Step 5: Return all values (rounded to 2 decimal places)
+    // Step 4: Per-seat zone boundaries
+    base_per_seat        = base_price / seats          // 🟢 Green zone start (pure fuel)
+    recommended_per_seat = base_per_seat × 1.2         // 🟢 Green zone ceiling (+20% buffer)
+    max_per_seat         = max_allowed / seats          // 🔴 Hard cap (slider maximum)
+
+    // Step 5: Clamp driver's per-seat price to hard cap
+    capped_price = MIN(driver_set_price, max_per_seat)  // PER SEAT — stored in DB
+    was_clamped  = driver_set_price > max_per_seat
+
+    // Step 6: Return (all values rounded to 2 decimal places)
     RETURN {
-        base_price:   ROUND(base_cost, 2),
-        multiplier:   multiplier,
-        max_allowed:  ROUND(max_allowed, 2),
-        capped_price: ROUND(capped_price, 2),
-        was_clamped:  driver_set_price > max_allowed
+        base_price:           ROUND(base_price, 2),
+        multiplier:           multiplier,
+        max_allowed:          ROUND(max_allowed, 2),
+        base_per_seat:        ROUND(base_per_seat, 2),
+        recommended_per_seat: ROUND(recommended_per_seat, 2),
+        max_per_seat:         ROUND(max_per_seat, 2),
+        capped_price:         ROUND(capped_price, 2),   // ← PER SEAT stored in rides.capped_price
+        was_clamped:          was_clamped
     }
 
 END FUNCTION
@@ -1362,33 +1382,37 @@ END FUNCTION
 
 **Complexity:** O(1) — constant time, single arithmetic computation with a lookup.
 
-**Worked Example — Same Route, Different Vehicles:**
+**Worked Example — Car, 3 seats, 40 km:**
 
 ```
-Common Input: distance_km = 40, fuel_rate = ₹105/litre
+Input: distance_km=40, fuel_rate=₹105/L, mileage=15 km/L, seats=3, vehicle=car
 
-┌───────────┬─────────┬────────────┬────────────┬──────────┬───────────┐
-│ Vehicle   │ Mileage │ base_cost  │ Multiplier │ max_cap  │ Per-Seat  │
-│           │ (km/l)  │ (fuel)     │            │ (ceiling)│ (3 seats) │
-├───────────┼─────────┼────────────┼────────────┼──────────┼───────────┤
-│ Bike      │ 45      │ ₹93.33     │ 1.2x       │ ₹112.00  │ ₹37.33    │
-│ Auto      │ 25      │ ₹168.00    │ 1.35x      │ ₹226.80  │ ₹75.60    │
-│ Car       │ 15      │ ₹280.00    │ 1.5x       │ ₹420.00  │ ₹140.00   │
-└───────────┴─────────┴────────────┴────────────┴──────────┴───────────┘
+  Step 1: base_price         = (40 × 105) / 15       = ₹280.00  (total fuel)
+  Step 2: multiplier         = 1.5  (car)
+  Step 3: max_allowed        = 280 × 1.5              = ₹420.00  (reference)
+  Step 4: base_per_seat      = 280 / 3                = ₹93.33   🟢 Green zone start
+          recommended_per_seat = 93.33 × 1.2          = ₹112.00  🟢 Green zone ceiling
+          max_per_seat        = 420 / 3               = ₹140.00  🔴 Hard cap
 
-Detailed — Bike Example:
-  Step 1: base_cost   = (40 × 105) / 45 = 4200 / 45 = ₹93.33
-  Step 2: multiplier  = 1.2  (bike)
-  Step 3: max_allowed = 93.33 × 1.2 = ₹112.00
-  Step 4: driver asks ₹150 → capped_price = MIN(150, 112) = ₹112.00  ⚠️ Clamped
-
-Detailed — Car Example:
-  Step 1: base_cost   = (40 × 105) / 15 = 4200 / 15 = ₹280.00
-  Step 2: multiplier  = 1.5  (car)
-  Step 3: max_allowed = 280 × 1.5 = ₹420.00
-  Step 4: driver asks ₹350 → capped_price = MIN(350, 420) = ₹350.00  ✅ Within cap
-  Per-seat (3 passengers): 350 / 3 = ₹116.67
+  Case A — driver asks ₹100/seat (≤ ₹112):  capped = ₹100  ✓ Fair Price (Green)
+  Case B — driver asks ₹115/seat (≤ ₹140):  capped = ₹115  ↑ Within Range (Yellow)
+  Case C — driver asks ₹160/seat (> ₹140):  capped = ₹140  ⚠️  Clamped to Hard Cap
 ```
+
+**Multi-Vehicle Comparison (same 40 km route):**
+
+```
+┌───────────┬─────────┬────────────┬──────┬──────────────┬────────────────┬──────────────┐
+│ Vehicle   │ Mileage │ base_price │ Mult │ base_per_seat│ recommended    │ max_per_seat │
+│           │ (km/l)  │ (total)    │      │ (3 seats)    │ (+20%)         │ (hard cap)   │
+├───────────┼─────────┼────────────┼──────┼──────────────┼────────────────┼──────────────┤
+│ Bike      │ 45      │ ₹93.33     │ 1.2× │ ₹31.11       │ ₹37.33         │ ₹37.33       │
+│ Auto      │ 25      │ ₹168.00    │ 1.35×│ ₹56.00       │ ₹67.20         │ ₹75.60       │
+│ Car       │ 15      │ ₹280.00    │ 1.5× │ ₹93.33       │ ₹112.00        │ ₹140.00      │
+└───────────┴─────────┴────────────┴──────┴──────────────┴────────────────┴──────────────┘
+```
+
+> **Note for Bike:** Since multiplier = 1.2× and green zone ceiling = base × 1.2, the recommended and hard cap coincide. The slider still ranges from base_per_seat to max_per_seat.
 
 ### 8.2 Concurrency Control — Booking Transaction
 
@@ -1428,8 +1452,10 @@ FUNCTION bookSeat(ride_id, passenger_id, seats_requested):
             RETURN Error(400, "Not enough seats")
         END IF
 
-        // Step 3: Calculate per-seat price
-        price = (ride.capped_price / ride.available_seats) × seats_requested
+        // Step 3: Calculate price paid
+        // capped_price is stored as a per-seat value (SRS v1.5).
+        // No division by available_seats — guaranteed price certainty.
+        price_paid = ride.capped_price × seats_requested
 
         // Step 4: Atomic update + insert
         connection.QUERY("UPDATE rides SET available_seats = available_seats - ? WHERE id = ?")
