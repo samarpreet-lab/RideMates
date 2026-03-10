@@ -8,6 +8,7 @@ import {
   Platform,
   StatusBar,
   Animated,
+  BackHandler,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -70,7 +71,7 @@ export default function HomeScreen() {
     } catch (error: any) {
       if (error.response?.status === 401) {
         await deleteToken();
-        router.replace('/(tabs)/login');
+        router.replace('/(tabs)' as any);
       }
     } finally {
       setLoading(false);
@@ -81,6 +82,13 @@ export default function HomeScreen() {
     useCallback(() => {
       setLoading(true);
       loadData();
+
+      // Prevent Android back button from navigating to signup/login
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+        BackHandler.exitApp();
+        return true;
+      });
+      return () => backHandler.remove();
     }, [])
   );
 
@@ -162,7 +170,7 @@ export default function HomeScreen() {
       cancelText: 'Cancel',
       onConfirm: async () => {
         await deleteToken();
-        router.replace('/(tabs)/login');
+        router.replace('/(tabs)' as any);
       },
     });
   };

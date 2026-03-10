@@ -25,13 +25,14 @@ function AuthGatekeeper({ children }: { children: React.ReactNode }) {
 
   const checkAuth = async () => {
     const token = await getToken();
-    const inAuthGroup = segments[0] === '(tabs)' && segments[1] === 'login';
+    const seg1 = segments[1] as string | undefined;
+    const inAuthGroup = segments[0] === '(tabs)' && (seg1 === 'index' || seg1 === 'login');
     const inTabsGroup = segments[0] === '(tabs)';
 
     if (!token) {
-      // Not logged in — lock to login screen
+      // Not logged in — lock to signup screen
       if (!inAuthGroup) {
-        router.replace('/(tabs)/login');
+        router.replace('/(tabs)' as any);
       }
     } else {
       // Logged in — kick out of login screen

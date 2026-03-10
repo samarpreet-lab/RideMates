@@ -103,7 +103,7 @@ export default function PostRideScreen() {
     } catch (error: any) {
       if (error.response?.status === 401) {
         await deleteToken();
-        router.replace('/(tabs)/login');
+        router.replace('/(tabs)' as any);
       }
     } finally {
       setLoading(false);
@@ -139,18 +139,18 @@ export default function PostRideScreen() {
   }, [vehicleType]);
 
   // --- Price calculations (per-seat model — SRS v1.5) ---
-  const fuelRate    = FUEL_RATES[fuelType] || 105;
-  const mileageNum  = parseFloat(mileage) || 15;
-  const basePrice   = distanceKm > 0 ? round2((distanceKm * fuelRate) / mileageNum) : 0; // total fuel cost
-  const multiplier  = VEHICLE_MULTIPLIERS[vehicleType] || 1.5;
+  const fuelRate = FUEL_RATES[fuelType] || 105;
+  const mileageNum = parseFloat(mileage) || 15;
+  const basePrice = distanceKm > 0 ? round2((distanceKm * fuelRate) / mileageNum) : 0; // total fuel cost
+  const multiplier = VEHICLE_MULTIPLIERS[vehicleType] || 1.5;
 
   // Per-seat zone boundaries
-  const basePerSeat        = (basePrice > 0 && seats > 0) ? round2(basePrice / seats)               : 0; // green zone start
+  const basePerSeat = (basePrice > 0 && seats > 0) ? round2(basePrice / seats) : 0; // green zone start
   const recommendedPerSeat = round2(basePerSeat * 1.2);                                                   // green zone ceiling
-  const maxPerSeat         = (basePrice > 0 && seats > 0) ? round2((basePrice * multiplier) / seats) : 0; // hard cap
+  const maxPerSeat = (basePrice > 0 && seats > 0) ? round2((basePrice * multiplier) / seats) : 0; // hard cap
 
   // driverPrice is per-seat; cappedPrice is what gets stored in DB
-  const cappedPrice   = Math.min(driverPrice, maxPerSeat || driverPrice);
+  const cappedPrice = Math.min(driverPrice, maxPerSeat || driverPrice);
   const totalEarnings = seats > 0 ? round2(cappedPrice * seats) : 0;
 
   // Init slider to hard cap (max per seat) when route or seats change
