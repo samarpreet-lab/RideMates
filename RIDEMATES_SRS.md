@@ -536,12 +536,12 @@ RideMates follows a **three-tier client-server architecture** with the **MVC (Mo
 
 | Interface | Description |
 |-----------|-------------|
-| **Login / Signup Screen** | Two-phase screen. **Phase 1:** University email input only with "Continue" button and domain validation. **Phase 2:** 6-digit numeric OTP input field with auto-submit on completion and a "Resend Code" timer (60-second cooldown). No password fields. |
+| **Login / Signup Screen** | Two-phase screen. **Phase 1:** University email input only with "Continue" button and domain validation. **Phase 2:** 6-digit numeric OTP input field with auto-submit on completion and a "Resend Code" timer (60-second cooldown). Both phases are rendered on the same screen (no navigation away). No password fields. |
 | **Home Screen** | Dashboard with two primary actions: "Post a Ride" and "Find a Ride." Displays recent activity summary. |
 | **Post Ride Screen** | Form with city inputs (origin/destination), date/time picker, seat count, vehicle details, price slider with visual cap indicator, emergency route toggle, women-only toggle, and Instant Booking toggle with Trust Contract acknowledgment checkbox. |
 | **Search/Map Screen** | Origin and destination input fields with autocomplete. Interactive map displaying the route polyline. List of matching rides below the map as scrollable cards. |
-| **Booking Screen** | Ride details card with driver info, route, price breakdown, and "Book Now" button. Fetches fresh data on mount to prevent ghost seats. |
-| **My Rides Screen** | Two tabs — "As Driver" (rides I posted) and "As Passenger" (rides I booked). Status badges for active/completed/cancelled. |
+| **Booking Screen** | Ride details card with driver info, route, price breakdown, and "Book Now" button. Fetches fresh data on mount to prevent ghost seats. If the driver is viewing their own ride, "Edit Ride" and "Cancel Ride" buttons are shown instead. |
+| **My Rides Screen** | Two tabs — "As Driver" (rides I posted) and "As Passenger" (rides I booked). Status badges for active/completed/cancelled. Passengers can explicitly cancel their bookings from active trip cards on this screen, triggering the tiered penalty rules. |
 | **Profile Screen** | Displays user name, email, phone, role, trust score, and current streak. Edit functionality for mutable fields. Trust score below 50 shows a warning badge. |
 
 #### 4.2.2 Hardware Interfaces
@@ -1736,13 +1736,13 @@ Scenario 3 — Expired OTP:
 
 | # | Screen | Access | Primary Action |
 |---|--------|--------|----------------|
-| 1 | Login / Signup | Unauthenticated | Phase 1: Enter university email. Phase 2: Enter 6-digit OTP. Phase 3 (new users only): Enter full name to complete registration |
+| 1 | Login / Signup | Unauthenticated | Phase 1: Enter university email. Phase 2: Enter 6-digit OTP (same screen). Phase 3 (new users only): Enter full name to complete registration |
 | 2 | Home Dashboard | Authenticated | Choose "Post a Ride" or "Find a Ride" |
 | 3 | Post Ride | Authenticated (Driver) | Fill ride form, adjust price slider, submit |
 | 4 | Search / Map | Authenticated (Passenger) | Enter route, view map, browse ride cards |
-| 5 | Booking Details | Authenticated (Passenger) | View fresh ride data, confirm booking |
+| 5 | Ride Details | Authenticated (Any) | Passengers: View fresh ride data, confirm booking. Drivers: Edit or cancel own ride via modal. |
 | 6 | Booking Success | Authenticated (Passenger) | Confirmation with WhatsApp and Call native handoff buttons |
-| 7 | My Rides | Authenticated | View ride/booking history with statuses; file reports |
+| 7 | My Rides | Authenticated | View ride/booking history with statuses; file reports; cancel active passenger bookings |
 | 8 | Profile | Authenticated | View/edit personal information; view trust score and current streak |
 
 ### 9.2 Screen Flow
@@ -1790,11 +1790,11 @@ Scenario 3 — Expired OTP:
 | Attribute | Specification |
 |-----------|---------------|
 | **Phase 1 — Email Entry** | Single input field for university email (`@lpu.in`), "Send OTP" button. No password field. |
-| **Phase 2 — OTP Verification** | 6-digit numeric input (auto-focus, keyboard type `number-pad`), "Verify" button, "Resend Code" link (disabled for 60 seconds with countdown timer). |
+| **Phase 2 — OTP Verification** | 6-digit numeric input (auto-focus, keyboard type `number-pad`), "Verify" button, "Resend Code" link (disabled for 60 seconds with countdown timer). Replaces the email input linearly on the same screen. |
 | **Validation** | Client-side: email must end with `@lpu.in`. Server-side: all OTP logic handled by backend. |
 | **Error States** | Inline error messages for: invalid domain, rate limit (60s wait), wrong code (attempts remaining), expired code, locked out. |
 | **Success Transition** | If `isNewUser = true` → navigate to Registration form. If `isNewUser = false` → navigate to Home screen. |
-| **Rationale** | Password-less OTP flow eliminates credential management overhead and leverages university email as the sole identity proof. |
+| **Rationale** | Password-less OTP flow eliminates credential management overhead and leverages university email as the sole identity proof. Same-screen OTP reduces navigational friction. |
 
 #### RideCard Component
 
