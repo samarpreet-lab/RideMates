@@ -31,6 +31,7 @@ import LocationPickerModal from '../../components/Explore/LocationPickerModal';
 import TopIdentityBar from '../../components/Explore/TopIdentityBar';
 import BottomCommandSheet from '../../components/Explore/BottomCommandSheet';
 import { useAlert } from '../../components/ui/AlertContext';
+import { ExploreSkeleton } from '../../components/ui/SkeletonLoader';
 
 
 export default function HomeScreen() {
@@ -178,13 +179,7 @@ export default function HomeScreen() {
 
   // -- Loading state ---------------------------------------------------------
   if (loading) {
-    return (
-      <View style={s.loadingContainer}>
-        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-        <ActivityIndicator size="large" color="#C24E00" />
-        <Text style={s.loadingText}>Loading map...</Text>
-      </View>
-    );
+    return <ExploreSkeleton />;
   }
 
   const isFaculty = profile?.role === 'faculty';

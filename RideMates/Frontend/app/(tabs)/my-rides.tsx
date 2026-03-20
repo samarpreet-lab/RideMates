@@ -21,6 +21,7 @@ import api from '../../services/api';
 import MyRideCard from '../../components/MyRides/MyRideCard';
 import { s } from '../../components/MyRides/styles';
 import { useAlert } from '../../components/ui/AlertContext';
+import { MyRidesSkeleton } from '../../components/ui/SkeletonLoader';
 
 const { width } = Dimensions.get('window');
 const TAB_WIDTH = width / 2;
@@ -167,9 +168,7 @@ export default function MyRidesScreen() {
 
             {/* Content Area */}
             {loading ? (
-                <View style={s.centerContainer}>
-                    <ActivityIndicator size="large" color="#C24E00" />
-                </View>
+                <MyRidesSkeleton />
             ) : errorLine ? (
                 <View style={s.centerContainer}>
                     <MaterialIcons name="error-outline" size={48} color="#f87171" />

@@ -33,6 +33,7 @@ import BookingSuccessSheet from '../../components/RideDetails/BookingSuccessShee
 import EditRideModal from '../../components/RideDetails/EditRideModal';
 import PassengerList from '../../components/RideDetails/PassengerList';
 import { useAlert } from '../../components/ui/AlertContext';
+import { RideDetailsSkeleton } from '../../components/ui/SkeletonLoader';
 
 type ScreenState = 'loading' | 'detail' | 'error' | 'success';
 
@@ -211,16 +212,7 @@ export default function RideDetailsScreen() {
 
     // ─── Loading state ────────────────────────────────────────────────────
     if (state === 'loading') {
-        return (
-            <View style={ds.root}>
-                <View style={ds.centerContainer}>
-                    <ActivityIndicator size="large" color="#C24E00" />
-                    <Text style={{ fontSize: 14, color: '#888', marginTop: 8 }}>
-                        Loading ride details…
-                    </Text>
-                </View>
-            </View>
-        );
+        return <RideDetailsSkeleton />;
     }
 
     // ─── Error state ──────────────────────────────────────────────────────

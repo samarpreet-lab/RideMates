@@ -24,6 +24,7 @@ import VehicleSection from '../../components/PostRide/VehicleSection';
 import PricingSection from '../../components/PostRide/PricingSection';
 import LocationPickerModal from '../../components/PostRide/LocationPickerModal';
 import { useAlert } from '../../components/ui/AlertContext';
+import { PostRideSkeleton } from '../../components/ui/SkeletonLoader';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 interface UserProfile {
@@ -242,13 +243,7 @@ export default function PostRideScreen() {
   };
 
   if (loading) {
-    return (
-      <View style={s.loadingContainer}>
-        <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-        <ActivityIndicator size="large" color="#C24E00" />
-        <Text style={s.loadingText}>Loading...</Text>
-      </View>
-    );
+    return <PostRideSkeleton />;
   }
 
   const isFemale = profile?.gender === 'female';
