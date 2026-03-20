@@ -34,7 +34,7 @@ async function createRide(req, res) {
     const {
       origin_city, origin_lat, origin_lng,
       destination_city, dest_lat, dest_lng,
-      distance_km, departure_time, available_seats,
+      departure_time, available_seats,
       vehicle_type, vehicle_mileage, fuel_type,
       driver_set_price,
       is_emergency_route,
@@ -48,11 +48,47 @@ async function createRide(req, res) {
     const driver_id = req.user.id;
 
     // --- Validate required fields ---
-    if (!origin_city || !destination_city || !distance_km || !departure_time || !available_seats || !driver_set_price) {
+    if (!origin_city || !destination_city || !departure_time || !available_seats || !driver_set_price) {
       return res.status(400).json({
         success: false,
         message: 'Please fill in all required fields.',
         error: 'MISSING_FIELDS',
+      });
+    }
+
+    // --- Validate coordinates ---
+    if (!origin_lat || !origin_lng || !dest_lat || !dest_lng) {
+      return res.status(400).json({
+        success: false,
+        message: 'Origin and destination coordinates are required.',
+        error: 'MISSING_COORDINATES',
+      });
+    }
+
+    // --- Backend OSRM Integration (Security: never trust frontend distance) ---
+    // OSRM expects longitude,latitude order.
+    let distance_km;
+    try {
+      const osrmUrl = `http://router.project-osrm.org/route/v1/driving/${origin_lng},${origin_lat};${dest_lng},${dest_lat}?overview=false`;
+      const osrmRes = await fetch(osrmUrl, { signal: AbortSignal.timeout(10000) });
+      const osrmData = await osrmRes.json();
+
+      if (!osrmData.routes || osrmData.routes.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Unable to calculate a valid driving route between these locations.',
+          error: 'NO_ROUTE',
+        });
+      }
+
+      // OSRM returns distance in meters — convert to kilometres
+      distance_km = osrmData.routes[0].distance / 1000;
+    } catch (osrmError) {
+      console.error('OSRM route calculation failed:', osrmError.message);
+      return res.status(400).json({
+        success: false,
+        message: 'Unable to calculate a valid driving route between these locations.',
+        error: 'ROUTE_CALC_FAILED',
       });
     }
 
@@ -80,7 +116,7 @@ async function createRide(req, res) {
     // driver_set_price is the per-seat price the driver wants to charge.
     // calculatePrice returns capped_price as per-seat (v1.5 model).
     const pricing = calculatePrice({
-      distance_km: parseFloat(distance_km),
+      distance_km,
       fuel_rate,
       vehicle_mileage: parseFloat(vehicle_mileage) || 15,
       vehicle_type: vehicle_type || 'car',

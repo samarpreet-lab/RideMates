@@ -89,8 +89,8 @@ const DEFAULT_MULTIPLIER = 1.5;
 function calculatePrice({ distance_km, fuel_rate, vehicle_mileage, vehicle_type, driver_set_price, available_seats }) {
 
   // --- Input validation ---
-  if (!distance_km || distance_km <= 0) {
-    throw new Error('distance_km must be a positive number');
+  if (!distance_km || isNaN(distance_km) || distance_km <= 0.1) {
+    throw new Error('Calculated distance is too short or invalid.');
   }
   if (!fuel_rate || fuel_rate <= 0) {
     throw new Error('fuel_rate must be a positive number');
