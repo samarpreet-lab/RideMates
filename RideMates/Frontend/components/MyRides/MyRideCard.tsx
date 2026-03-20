@@ -15,9 +15,10 @@ interface MyRideCardProps {
     ride: any;
     viewMode: 'passenger' | 'driver';
     onCancelBooking?: (bookingId: number) => void;
+    onPromptCancel?: (bookingId: number, penaltyWarning: string, ride: any) => void;
 }
 
-export default function MyRideCard({ ride, viewMode, onCancelBooking }: MyRideCardProps) {
+export default function MyRideCard({ ride, viewMode, onCancelBooking, onPromptCancel }: MyRideCardProps) {
     const router = useRouter();
     const { showAlert } = useAlert();
 
@@ -95,24 +96,27 @@ export default function MyRideCard({ ride, viewMode, onCancelBooking }: MyRideCa
             penaltyWarning = '⚠️ Last-minute cancellation — you will lose 5 Trust Points (same as a no-show).';
         }
 
-        showAlert({
-            type: 'confirm',
-            title: 'Cancel Booking?',
-            message: `Are you sure you want to cancel your booking for ${ride.origin_city} → ${ride.destination_city}?\n\n${penaltyWarning}`,
-            confirmText: 'Cancel Booking',
-            cancelText: 'Keep Booking',
-            onConfirm: () => {
-                onCancelBooking?.(ride.booking_id);
-                // Notify driver via WhatsApp about the cancellation
-                if (ride.driver_phone) {
-                    const msg =
-                        `Hi ${ride.driver_name || 'Driver'}! Sorry, I just had to cancel my booking ` +
-                        `for your *${ride.origin_city}* → *${ride.destination_city}* ride on RideMates. ` +
-                        `You can open up that seat for someone else. 🙏`;
-                    openWhatsApp(ride.driver_phone, msg);
-                }
-            },
-        });
+        if (onPromptCancel) {
+            onPromptCancel(ride.booking_id, penaltyWarning, ride);
+        } else {
+            showAlert({
+                type: 'confirm',
+                title: 'Cancel Booking?',
+                message: `Are you sure you want to cancel your booking for ${ride.origin_city} → ${ride.destination_city}?\n\n${penaltyWarning}`,
+                confirmText: 'Cancel Booking',
+                cancelText: 'Keep Booking',
+                onConfirm: () => {
+                    onCancelBooking?.(ride.booking_id);
+                    if (ride.driver_phone) {
+                        const msg =
+                            `Hi ${ride.driver_name || 'Driver'}! Sorry, I just had to cancel my booking ` +
+                            `for your *${ride.origin_city}* → *${ride.destination_city}* ride on RideMates. ` +
+                            `You can open up that seat for someone else. 🙏`;
+                        openWhatsApp(ride.driver_phone, msg);
+                    }
+                },
+            });
+        }
     };
 
     return (

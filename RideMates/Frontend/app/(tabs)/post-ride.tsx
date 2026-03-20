@@ -23,6 +23,7 @@ import RouteSection from '../../components/PostRide/RouteSection';
 import VehicleSection from '../../components/PostRide/VehicleSection';
 import PricingSection from '../../components/PostRide/PricingSection';
 import LocationPickerModal from '../../components/PostRide/LocationPickerModal';
+import RideStatusModal from '../../components/ui/RideStatusModal';
 import { useAlert } from '../../components/ui/AlertContext';
 import { PostRideSkeleton } from '../../components/ui/SkeletonLoader';
 
@@ -64,6 +65,9 @@ export default function PostRideScreen() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
+
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
+  const [createdRideId, setCreatedRideId] = useState<string | null>(null);
 
   // --- Section A: Route ---
   const [origin, setOrigin] = useState('LPU Main Gate');
@@ -206,14 +210,8 @@ export default function PostRideScreen() {
 
       const res = await api.post('/rides/create', body);
       if (res.data.success) {
-        showAlert({
-          type: 'success',
-          title: 'Ride Published!',
-          message: `Your ride from ${origin} to ${destination} is now live.\n\nPrice: ₹${res.data.data.capped_price}` +
-            (res.data.data.was_clamped ? ' (capped by system)' : ''),
-          confirmText: 'Great!',
-          onDismiss: () => router.replace('/(tabs)/explore'),
-        });
+        setCreatedRideId(res.data.data.id || null);
+        setSuccessModalVisible(true);
       }
     } catch (error: any) {
       let msg = 'Something went wrong. Please try again.';
@@ -254,6 +252,40 @@ export default function PostRideScreen() {
   return (
     <View style={s.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" translucent />
+
+      <RideStatusModal
+        visible={successModalVisible}
+        type="success"
+        iconName="shield-check"
+        title="Success! Ride Posted"
+        message={`Your ride to ${destination} has been broadcasted. You'll be notified when a verified student books a seat.`}
+        pillText="LPU NETWORK SECURED"
+        rideDetails={{
+          origin,
+          destination,
+          timeString: departureTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }).toUpperCase(),
+          vehicleTypes: `${vehicleType.charAt(0).toUpperCase() + vehicleType.slice(1)} • ${seats} Seats`,
+        }}
+        primaryAction={{
+          label: 'Got it',
+          icon: 'arrow-forward',
+          onPress: () => {
+            setSuccessModalVisible(false);
+            router.replace('/(tabs)/explore');
+          }
+        }}
+        secondaryAction={{
+          label: 'View Ride Details',
+          onPress: () => {
+            setSuccessModalVisible(false);
+            if (createdRideId) {
+              router.replace({ pathname: '/(tabs)/ride-details', params: { id: createdRideId } });
+            } else {
+              router.replace('/(tabs)/explore');
+            }
+          }
+        }}
+      />
 
       <LocationPickerModal
         locPickerTarget={locPickerTarget}

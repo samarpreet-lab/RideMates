@@ -1,7 +1,7 @@
 // Frontend/constants/config.ts
 
 // Replace 192.168.1.5 with YOUR actual IPv4 Address
-const LOCAL_IP = '192.168.1.11'; 
+const LOCAL_IP = '192.168.1.18'; 
 
 export const CONFIG = {
   // We use this URL to talk to your Node.js backend

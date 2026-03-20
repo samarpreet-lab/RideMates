@@ -275,4 +275,54 @@ export const s = StyleSheet.create({
     },
     locPickerItemLabel: { fontSize: 15, fontWeight: '700', color: '#1E1610' },
     locPickerItemSub: { fontSize: 12, color: '#A8937F', marginTop: 1 },
+
+    // Success Modal
+    successOverlay: {
+        flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center', alignItems: 'center',
+    },
+    successCard: {
+        width: '85%', backgroundColor: '#fff',
+        borderRadius: 24, padding: 24, alignItems: 'center',
+        elevation: 10, shadowColor: '#000',
+        shadowOpacity: 0.15, shadowRadius: 16, shadowOffset: { width: 0, height: 4 },
+    },
+    shieldGlow: {
+        width: 80, height: 80, borderRadius: 40,
+        backgroundColor: '#FFE5D4',
+        justifyContent: 'center', alignItems: 'center',
+        elevation: 10, shadowColor: '#D9622A', shadowOpacity: 0.8,
+        shadowRadius: 15, shadowOffset: { width: 0, height: 0 },
+        marginBottom: 16,
+    },
+    networkPill: {
+        backgroundColor: '#FFF2E8', paddingHorizontal: 16, paddingVertical: 6,
+        borderRadius: 20, marginBottom: 16,
+    },
+    networkPillText: { fontSize: 10, fontWeight: '800', color: '#D9622A', letterSpacing: 1 },
+    successTitle: { fontSize: 22, fontWeight: '800', color: '#1B263B', marginBottom: 12 },
+    successMessage: {
+        fontSize: 13, color: '#666', textAlign: 'center',
+        lineHeight: 20, marginBottom: 20, paddingHorizontal: 4,
+    },
+    rideCardBox: {
+        width: '100%', backgroundColor: '#F0F2F5',
+        borderRadius: 16, padding: 16, marginBottom: 24,
+    },
+    rideCardRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
+    rideCardRouteTop: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#888' },
+    rideCardRouteLine: { width: 1, height: 14, backgroundColor: '#888', marginLeft: 3, marginVertical: 2 },
+    rideCardRouteText: { fontSize: 14, fontWeight: '700', color: '#1B263B', flex: 1 },
+    rideCardSubRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginLeft: 20, marginBottom: 6 },
+    rideCardSubText: { fontSize: 13, color: '#444', fontWeight: '500' },
+    gotItBtn: {
+        width: '100%', backgroundColor: '#C24E00',
+        borderRadius: 12, paddingVertical: 14,
+        alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6,
+        marginBottom: 12,
+    },
+    gotItBtnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
+    viewDetailsBtn: { paddingVertical: 8, paddingHorizontal: 16 },
+    viewDetailsText: { fontSize: 13, fontWeight: '700', color: '#C24E00' },
 });
+

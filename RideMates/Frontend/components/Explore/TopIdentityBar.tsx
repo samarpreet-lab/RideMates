@@ -2,13 +2,13 @@
 // components/Explore/TopIdentityBar.tsx — Avatar + Trust Ring + Role Badge
 // =============================================================================
 
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { s } from './styles';
 import { UserProfile, getInitials } from './constants';
-import { useAlert } from '../ui/AlertContext';
+import ProfileModal from './ProfileModal';
 
 interface TopIdentityBarProps {
   profile: UserProfile | null;
@@ -23,23 +23,19 @@ export default function TopIdentityBar({
   trustColor,
   isFaculty,
 }: TopIdentityBarProps) {
-  const { showAlert } = useAlert();
+  const [modalVisible, setModalVisible] = useState(false);
+
   return (
-    <SafeAreaView style={s.topBarSafe} pointerEvents="box-none">
-      <View style={s.topBar}>
-        {/* Avatar with role badge */}
-        <TouchableOpacity
-          style={s.avatarWrapper}
-          onPress={() =>
-            showAlert({
-              type: 'info',
-              title: 'Profile',
-              message: `${profile?.full_name}\n${profile?.email}\nRole: ${profile?.role}\nTrust Score: ${trustScore}`,
-            })
-          }
-          activeOpacity={0.85}
-        >
-          {/* Trust score ring */}
+    <>
+      <SafeAreaView style={s.topBarSafe} pointerEvents="box-none">
+        <View style={s.topBar}>
+          {/* Avatar with role badge */}
+          <TouchableOpacity
+            style={s.avatarWrapper}
+            onPress={() => setModalVisible(true)}
+            activeOpacity={0.85}
+          >
+            {/* Trust score ring */}
           <View style={[s.avatarRing, { borderColor: trustColor }]}>
             <View style={s.avatarCircle}>
               <Text style={s.avatarInitials}>
@@ -63,5 +59,13 @@ export default function TopIdentityBar({
         </TouchableOpacity>
       </View>
     </SafeAreaView>
+      <ProfileModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        profile={profile}
+        trustScore={trustScore}
+        isFaculty={isFaculty}
+      />
+    </>
   );
 }

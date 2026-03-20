@@ -13,6 +13,7 @@ import {
     ActivityIndicator,
     Animated,
     Dimensions,
+    Linking
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
@@ -22,6 +23,7 @@ import MyRideCard from '../../components/MyRides/MyRideCard';
 import { s } from '../../components/MyRides/styles';
 import { useAlert } from '../../components/ui/AlertContext';
 import { MyRidesSkeleton } from '../../components/ui/SkeletonLoader';
+import RideStatusModal from '../../components/ui/RideStatusModal';
 
 const { width } = Dimensions.get('window');
 const TAB_WIDTH = width / 2;
@@ -37,6 +39,7 @@ export default function MyRidesScreen() {
     const [bookedRides, setBookedRides] = useState<any[]>([]);
     const [publishedRides, setPublishedRides] = useState<any[]>([]);
     const [errorLine, setErrorLine] = useState('');
+    const [statusModal, setStatusModal] = useState<any>(null);
 
     // Animation value for the sliding underline
     const slideAnim = useRef(new Animated.Value(0)).current;
@@ -67,7 +70,26 @@ export default function MyRidesScreen() {
         }
     };
 
-    const handleCancelBooking = async (bookingId: number) => {
+    const handlePromptCancelBooking = (bookingId: number, penaltyWarning: string, ride: any) => {
+        setStatusModal({
+            visible: true,
+            type: 'warning',
+            iconName: 'alert-circle',
+            title: 'Cancel Booking?',
+            message: `Are you sure you want to cancel your booking for ${ride.origin_city} → ${ride.destination_city}?\n\n${penaltyWarning}`,
+            pillText: 'WARNING',
+            primaryLabel: 'Cancel Booking',
+            primaryIcon: 'cancel',
+            onPrimaryPress: () => {
+                setStatusModal(null);
+                setTimeout(() => handleCancelBooking(bookingId, ride), 300);
+            },
+            secondaryLabel: 'Keep Booking',
+            onSecondaryPress: () => setStatusModal(null),
+        });
+    };
+
+    const handleCancelBooking = async (bookingId: number, ride?: any) => {
         try {
             const res = await api.put(`/bookings/${bookingId}/cancel`);
             if (res.data.success) {
@@ -76,7 +98,32 @@ export default function MyRidesScreen() {
                 if (penalty > 0) {
                     msg += `\n\nPenalty: −${penalty} Trust Points (${tier})`;
                 }
-                showAlert({ type: 'success', title: 'Booking Cancelled', message: msg });
+                setStatusModal({
+                    visible: true,
+                    type: penalty > 0 ? 'warning' : 'success',
+                    iconName: 'cancel',
+                    title: 'Booking Cancelled',
+                    message: msg,
+                    pillText: 'CANCELLATION CONFIRMED',
+                    primaryLabel: 'Got it',
+                    primaryIcon: 'check',
+                    onPrimaryPress: () => setStatusModal(null),
+                });
+                
+                if (ride && ride.driver_phone) {
+                    const msg =
+                        `Hi ${ride.driver_name || 'Driver'}! Sorry, I just had to cancel my booking ` +
+                        `for your *${ride.origin_city}* → *${ride.destination_city}* ride on RideMates. ` +
+                        `You can open up that seat for someone else. 🙏`;
+                    
+                    const cleaned = ride.driver_phone.replace(/\D/g, '');
+                    const finalPhone = cleaned.length === 10 ? `91${cleaned}` : cleaned;
+                    const url = `https://wa.me/${finalPhone}?text=${encodeURIComponent(msg)}`;
+                    Linking.canOpenURL(url).then(can => {
+                        if (can) Linking.openURL(url).catch(() => {});
+                    }).catch(() => {});
+                }
+
                 fetchMyRides();
             } else {
                 showAlert({ type: 'error', title: 'Error', message: res.data.message || 'Could not cancel booking.' });
@@ -187,11 +234,30 @@ export default function MyRidesScreen() {
                         <MyRideCard
                             ride={item}
                             viewMode={activeTab === 'booked' ? 'passenger' : 'driver'}
-                            onCancelBooking={handleCancelBooking}
+                            onCancelBooking={(id) => handleCancelBooking(id, item)}
+                            onPromptCancel={handlePromptCancelBooking}
                         />
                     )}
                 />
             )}
+
+            <RideStatusModal
+                visible={statusModal?.visible || false}
+                type={statusModal?.type || 'success'}
+                iconName={statusModal?.iconName || 'shield-check'}
+                title={statusModal?.title || ''}
+                message={statusModal?.message || ''}
+                pillText={statusModal?.pillText}
+                primaryAction={{
+                    label: statusModal?.primaryLabel || 'Done',
+                    icon: statusModal?.primaryIcon,
+                    onPress: statusModal?.onPrimaryPress || (() => setStatusModal(null))
+                }}
+                secondaryAction={statusModal?.secondaryLabel ? {
+                    label: statusModal.secondaryLabel,
+                    onPress: statusModal.onSecondaryPress || (() => setStatusModal(null))
+                } : undefined}
+            />
         </View>
     );
 }

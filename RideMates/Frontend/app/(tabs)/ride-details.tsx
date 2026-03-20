@@ -29,7 +29,7 @@ import RouteTimeline from '../../components/RideDetails/RouteTimeline';
 import PriceBreakdown from '../../components/RideDetails/PriceBreakdown';
 import RideBadges from '../../components/RideDetails/RideBadges';
 import SeatSelector from '../../components/RideDetails/SeatSelector';
-import BookingSuccessSheet from '../../components/RideDetails/BookingSuccessSheet';
+import RideStatusModal from '../../components/ui/RideStatusModal';
 import EditRideModal from '../../components/RideDetails/EditRideModal';
 import PassengerList from '../../components/RideDetails/PassengerList';
 import { useAlert } from '../../components/ui/AlertContext';
@@ -60,6 +60,7 @@ export default function RideDetailsScreen() {
     const [myBooking, setMyBooking] = useState<any>(null);
     const [isBooking, setIsBooking] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
+    const [statusModal, setStatusModal] = useState<any>(null);
 
     // ─── Fetch fresh ride data & profile on mount ────────────────────────────
     const fetchRide = async () => {
@@ -113,7 +114,20 @@ export default function RideDetailsScreen() {
 
             if (res.data.success) {
                 setBooking(res.data.data);
-                setState('success');
+                setStatusModal({
+                    visible: true,
+                    type: 'success',
+                    iconName: 'check-circle',
+                    title: ride.instant_booking ? 'Seat Booked!' : 'Request Sent!',
+                    message: ride.instant_booking 
+                        ? `Your booking with ${ride.driver_name} is confirmed.` 
+                        : `Your request has been sent to ${ride.driver_name}. You'll be notified once they accept.`,
+                    pillText: 'BOOKING CONFIRMED',
+                    primaryLabel: 'Done',
+                    primaryIcon: 'home',
+                    onPrimaryPress: handleDone,
+                    showContact: ride.instant_booking,
+                });
             } else {
                 showAlert({ type: 'error', title: 'Booking Failed', message: res.data.message || 'Could not book the ride.' });
             }
@@ -142,13 +156,16 @@ export default function RideDetailsScreen() {
     };
 
     const handleRejectBooking = (bookingId: number) => {
-        showAlert({
-            type: 'confirm',
+        setStatusModal({
+            visible: true,
+            type: 'warning',
+            iconName: 'alert-circle',
             title: 'Reject Request',
             message: 'Are you sure you want to reject this booking request?',
-            cancelText: 'No',
-            confirmText: 'Yes, Reject',
-            onConfirm: async () => {
+            primaryLabel: 'Yes, Reject',
+            primaryIcon: 'close',
+            onPrimaryPress: async () => {
+                setStatusModal(null);
                 try {
                     const res = await api.put(`/bookings/${bookingId}/reject`);
                     if (res.data.success) {
@@ -161,30 +178,46 @@ export default function RideDetailsScreen() {
                     showAlert({ type: 'error', title: 'Error', message: err.response?.data?.message || 'Failed to reject booking.' });
                 }
             },
+            secondaryLabel: 'No',
+            onSecondaryPress: () => setStatusModal(null),
         });
     };
 
     // ─── Handle Driver Ride Edits ──────────────────────────────────────────
     const handleCancelRide = () => {
-        showAlert({
-            type: 'confirm',
+        setStatusModal({
+            visible: true,
+            type: 'error',
+            iconName: 'alert-circle',
             title: 'Cancel Ride',
             message: 'Are you sure you want to cancel this published ride? This cannot be undone.',
-            cancelText: 'No, Keep It',
-            confirmText: 'Yes, Cancel',
-            onConfirm: async () => {
-                try {
-                    const res = await api.delete(`/rides/${ride?.id}`);
-                    if (res.data.success) {
-                        showAlert({ type: 'success', title: 'Ride Cancelled', message: 'Your ride has been successfully cancelled.' });
-                        router.replace('/(tabs)/my-rides');
-                    } else {
-                        showAlert({ type: 'error', title: 'Error', message: res.data.message || 'Could not cancel ride.' });
+            pillText: 'WARNING',
+            primaryLabel: 'Yes, Cancel',
+            primaryIcon: 'delete',
+            onPrimaryPress: async () => {
+                setStatusModal(null);
+                setTimeout(async () => {
+                    try {
+                        const res = await api.delete(`/rides/${ride?.id}`);
+                        if (res.data.success) {
+                            setStatusModal({
+                                visible: true, type: 'success', iconName: 'cancel',
+                                title: 'Ride Cancelled', message: 'Your ride has been successfully cancelled.',
+                                pillText: 'CANCELLATION CONFIRMED',
+                                primaryLabel: 'Go to My Rides',
+                                primaryIcon: 'arrow-forward',
+                                onPrimaryPress: () => router.replace('/(tabs)/my-rides'),
+                            });
+                        } else {
+                            showAlert({ type: 'error', title: 'Error', message: res.data.message || 'Could not cancel ride.' });
+                        }
+                    } catch (err: any) {
+                        showAlert({ type: 'error', title: 'Error', message: err.response?.data?.message || 'Failed to cancel ride.' });
                     }
-                } catch (err: any) {
-                    showAlert({ type: 'error', title: 'Error', message: err.response?.data?.message || 'Failed to cancel ride.' });
-                }
-            }
+                }, 300);
+            },
+            secondaryLabel: 'No, Keep It',
+            onSecondaryPress: () => setStatusModal(null),
         });
     };
 
@@ -192,7 +225,14 @@ export default function RideDetailsScreen() {
         try {
             const res = await api.put(`/rides/${ride?.id}`, updates);
             if (res.data.success) {
-                showAlert({ type: 'success', title: 'Success', message: 'Ride updated successfully!' });
+                setStatusModal({
+                    visible: true, type: 'success', iconName: 'check-circle',
+                    title: 'Changes Saved', message: 'Your ride has been updated successfully.',
+                    pillText: 'RIDE UPDATED',
+                    primaryLabel: 'Got it',
+                    primaryIcon: 'check',
+                    onPrimaryPress: () => { setStatusModal(null); setEditModalVisible(false); }
+                });
                 await fetchRide(); // Refresh data
                 return true;
             } else {
@@ -235,19 +275,6 @@ export default function RideDetailsScreen() {
                     </TouchableOpacity>
                 </View>
             </View>
-        );
-    }
-
-    // ─── Booking success state ────────────────────────────────────────────
-    if (state === 'success' && ride && booking) {
-        return (
-            <BookingSuccessSheet
-                ride={ride}
-                booking={booking}
-                passengerName={profile?.full_name || ''}
-                isPending={!ride.instant_booking}
-                onDone={handleDone}
-            />
         );
     }
 
@@ -407,6 +434,38 @@ export default function RideDetailsScreen() {
                     onSave={handleEditSave}
                 />
             )}
+
+            {/* Ride Status Modal (Booking/Cancel/Edit details) */}
+            <RideStatusModal
+                visible={statusModal?.visible || false}
+                type={statusModal?.type || 'success'}
+                iconName={statusModal?.iconName || 'shield-check'}
+                title={statusModal?.title || ''}
+                message={statusModal?.message || ''}
+                pillText={statusModal?.pillText}
+                rideDetails={{
+                    origin: ride.origin_city,
+                    destination: ride.destination_city,
+                    timeString: new Date(ride.departure_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }).toUpperCase(),
+                    vehicleTypes: `${ride.vehicle_type.charAt(0).toUpperCase() + ride.vehicle_type.slice(1)} • ${seatsSelected} Seats`,
+                }}
+                primaryAction={{
+                    label: statusModal?.primaryLabel || 'Done',
+                    icon: statusModal?.primaryIcon,
+                    onPress: statusModal?.onPrimaryPress || (() => setStatusModal(null))
+                }}
+                secondaryAction={statusModal?.secondaryLabel ? {
+                    label: statusModal.secondaryLabel,
+                    onPress: statusModal.onSecondaryPress || (() => setStatusModal(null))
+                } : undefined}
+                contactActions={statusModal?.showContact ? {
+                    driverPhone: ride.driver_phone || undefined,
+                    passengerName: profile?.full_name || undefined,
+                    driverName: ride.driver_name || undefined,
+                    origin: ride.origin_city,
+                    destination: ride.destination_city,
+                } : undefined}
+            />
         </View>
     );
 }

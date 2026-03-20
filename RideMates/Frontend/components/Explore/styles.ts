@@ -441,4 +441,83 @@ export const s = StyleSheet.create({
     borderWidth: 1, borderColor: '#FCDCBF', marginRight: 8,
   },
   locQuickChipText: { fontSize: 13, fontWeight: '600', color: '#C24E00' },
+
+  // ─── Profile Modal ────────────────────────────────────────────────────────
+  profileModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileModalCard: {
+    width: '80%',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    paddingTop: 30,
+    paddingBottom: 24,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    position: 'relative',
+  },
+  profileModalClose: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    padding: 4,
+  },
+  profileModalAvatarWrap: {
+    width: 70, height: 70, borderRadius: 35,
+    backgroundColor: '#D9622A', // Orange color matching LPU
+    justifyContent: 'center', alignItems: 'center',
+    marginBottom: 16,
+  },
+  profileModalInitials: {
+    fontSize: 26, fontWeight: '800', color: '#fff',
+  },
+  profileModalName: {
+    fontSize: 20, fontWeight: '800', color: '#1B263B', // Dark blue
+    marginBottom: 20,
+  },
+  profileModalDivider: {
+    width: '100%',
+    height: 1,
+    backgroundColor: '#F0F0F0',
+    marginVertical: 12,
+  },
+  profileModalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    gap: 12,
+  },
+  profileModalRowText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    flex: 1,
+  },
+  profileModalTrustBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2E7D32', // Green
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
+  },
+  profileModalTrustBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  profileModalTrustText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1B263B',
+  },
 });
