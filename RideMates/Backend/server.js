@@ -162,37 +162,82 @@ async function autoCompleteStaleRides() {
 // 12 hours after a ride is completed, if no reports were filed against it,
 // we increment current_streak by 1 for the driver AND all confirmed passengers.
 // This rewards consistent good behavior.
+//
+// ANTI-COLLUSION: 24-Hour Cooldown
+// If the same driver_id + passenger_id pair already had a streak-awarded ride
+// within the last 24 hours, the passenger's streak reward is SKIPPED.
+// This prevents friends from booking each other's fake rides to farm points.
+//
+// Uses streak_processed flag instead of the fragile time-window approach
+// to ensure no rides are missed or double-processed.
 // ---------------------------------------------------------------------------
 async function awardCleanRideStreaks() {
   try {
-    // Find rides that were completed 12+ hours ago but haven't been processed yet.
-    // We use "completed_at BETWEEN 12 and 13 hours ago" as our window to avoid
-    // re-processing the same rides on every run.
+    // Find rides that were completed 12+ hours ago AND haven't been processed yet.
+    // Using streak_processed flag is reliable — no rides slip through the cracks.
     const [cleanRides] = await pool.query(
-      `SELECT r.id AS ride_id, r.driver_id
+      `SELECT r.id AS ride_id, r.driver_id, r.completed_at
        FROM rides r
        WHERE r.status = 'completed'
          AND r.completed_at IS NOT NULL
          AND r.completed_at <= NOW() - INTERVAL 12 HOUR
-         AND r.completed_at > NOW() - INTERVAL 13 HOUR
+         AND r.streak_processed = FALSE
          AND NOT EXISTS (
            SELECT 1 FROM reports rp WHERE rp.ride_id = r.id
          )`
     );
 
     for (const ride of cleanRides) {
-      // Increment streak for the driver
+      // Increment streak for the driver (always — they can only drive one ride at a time)
       await pool.query(
         'UPDATE users SET current_streak = current_streak + 1 WHERE id = ?',
         [ride.driver_id]
       );
 
-      // Increment streak for all confirmed/completed passengers
-      await pool.query(
-        `UPDATE users u
-         JOIN bookings b ON u.id = b.passenger_id
-         SET u.current_streak = u.current_streak + 1
+      // --- 24-HOUR COOLDOWN CHECK (Anti-Collusion) ---
+      // For each confirmed/completed passenger on this ride, check if they
+      // already earned a streak from a ride with the SAME DRIVER in the last 24h.
+      // If yes → skip their streak reward (prevents farming).
+      // If no  → award normally.
+      const [passengers] = await pool.query(
+        `SELECT b.passenger_id
+         FROM bookings b
          WHERE b.ride_id = ? AND b.status IN ('confirmed', 'completed')`,
+        [ride.ride_id]
+      );
+
+      for (const passenger of passengers) {
+        // Check: did this exact driver–passenger pair already have a
+        // streak-processed ride that completed within the last 24 hours?
+        const [recentPairRides] = await pool.query(
+          `SELECT COUNT(*) AS pair_count
+           FROM rides r2
+           JOIN bookings b2 ON r2.id = b2.ride_id
+           WHERE r2.driver_id = ?
+             AND b2.passenger_id = ?
+             AND r2.streak_processed = TRUE
+             AND r2.completed_at >= NOW() - INTERVAL 24 HOUR
+             AND r2.id != ?`,
+          [ride.driver_id, passenger.passenger_id, ride.ride_id]
+        );
+
+        if (recentPairRides[0].pair_count === 0) {
+          // No recent duplicate pair → award the streak point
+          await pool.query(
+            'UPDATE users SET current_streak = current_streak + 1 WHERE id = ?',
+            [passenger.passenger_id]
+          );
+        } else {
+          console.log(
+            `⏳ Cooldown: Skipped streak for passenger ${passenger.passenger_id} ` +
+            `(duplicate pair with driver ${ride.driver_id} within 24h)`
+          );
+        }
+      }
+
+      // Mark ride as streak-processed so it isn't picked up again
+      await pool.query(
+        'UPDATE rides SET streak_processed = TRUE WHERE id = ?',
         [ride.ride_id]
       );
     }

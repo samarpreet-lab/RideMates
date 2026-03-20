@@ -127,6 +127,7 @@ CREATE TABLE rides (
     instant_booking_ack BOOLEAN DEFAULT FALSE            COMMENT 'TRUE = driver accepted the Trust Contract for instant booking',
     status              ENUM('active', 'completed', 'cancelled') DEFAULT 'active' COMMENT 'Ride lifecycle status',
     completed_at        TIMESTAMP NULL                   COMMENT 'When the driver confirmed ride completion (starts 12h grace period)',
+    streak_processed    BOOLEAN DEFAULT FALSE            COMMENT 'TRUE after clean-ride streak has been awarded for this ride',
     created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'When the ride was posted',
 
     FOREIGN KEY (driver_id) REFERENCES users(id) ON DELETE CASCADE,

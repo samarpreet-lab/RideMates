@@ -21,6 +21,8 @@ CREATE TABLE rides (
     instant_booking     BOOLEAN DEFAULT FALSE,
     instant_booking_ack BOOLEAN DEFAULT FALSE,
     status              ENUM('active', 'completed', 'cancelled') DEFAULT 'active',
+    completed_at        TIMESTAMP NULL,
+    streak_processed    BOOLEAN DEFAULT FALSE,
     created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (driver_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX idx_status (status),

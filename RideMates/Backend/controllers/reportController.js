@@ -125,82 +125,108 @@ async function fileReport(req, res) {
     }
 
     // =====================================================================
-    // PATTERN-MATCH EVALUATION (SRS Section 8.4)
+    // TRUST-WEIGHTED PENALTY GATE (Anti-Weaponization)
     // =====================================================================
+    // Before applying ANY penalty, check the reporter's own trust score.
+    // If the reporter's trust_score < 70, they are in the "untrusted" tier.
+    // Their report is still logged (admins can review it), but the reported
+    // user's trust score is NOT deducted. This mathematically cuts off
+    // low-reputation users from weaponizing the reporting system.
+    // =====================================================================
+
+    const [reporterRows] = await pool.query(
+      'SELECT trust_score FROM users WHERE id = ?',
+      [reporter_id]
+    );
+    const reporterTrustScore = reporterRows[0].trust_score;
 
     let penalty_applied = 0;
     let action = '';
     let userMessage = '';
 
-    // --- CASE 1: No-Show → Immediate penalty, bypass the shield (FR-RPT-09) ---
-    if (reason === 'no_show') {
-      penalty_applied = 5;
-      action = 'IMMEDIATE_PENALTY';
-
-      // Deduct 5 points and reset streak
-      await pool.query(
-        `UPDATE users
-         SET trust_score = GREATEST(trust_score - 5, 0),
-             current_streak = 0
-         WHERE id = ?`,
-        [reported_user_id]
-      );
-
-      userMessage = 'Report submitted. No-show penalty applied: −5 Trust Points.';
+    if (reporterTrustScore < 70) {
+      // --- UNTRUSTED REPORTER: Log the report, but apply 0-point deduction ---
+      // The report is still inserted into the database so admins can see it,
+      // but it does NOT affect the reported user's trust score or streak.
+      penalty_applied = 0;
+      action = 'UNTRUSTED_REPORTER';
+      userMessage = 'Report submitted and logged for admin review.';
     } else {
-      // --- CASE 2: Conduct report → Check for pattern (The Shield) ---
+      // =====================================================================
+      // PATTERN-MATCH EVALUATION (SRS Section 8.4)
+      // =====================================================================
+      // Reporter is trusted (trust_score >= 70), so apply normal penalty logic.
 
-      // Count how many DIFFERENT people have reported this user in the last 30 days
-      // (excluding the current reporter — we're checking prior reports)
-      const [priorReports] = await pool.query(
-        `SELECT COUNT(DISTINCT reporter_id) AS distinct_reporters
-         FROM reports
-         WHERE reported_user_id = ?
-           AND reporter_id != ?
-           AND reason IN ('bad_conduct', 'unsafe_driving', 'harassment')
-           AND created_at >= NOW() - INTERVAL 30 DAY`,
-        [reported_user_id, reporter_id]
-      );
+      // --- CASE 1: No-Show → Immediate penalty, bypass the shield (FR-RPT-09) ---
+      if (reason === 'no_show') {
+        penalty_applied = 5;
+        action = 'IMMEDIATE_PENALTY';
 
-      const distinctReporters = priorReports[0].distinct_reporters;
-
-      if (distinctReporters === 0) {
-        // ---- SHIELD: First/only reporter → Warning only (FR-RPT-03) ----
-        // One person lying shouldn't ruin someone's trust score.
-        penalty_applied = 0;
-        action = 'WARNING_ONLY';
-        userMessage = 'Report submitted. A system warning has been issued.';
-      } else {
-        // ---- PATTERN CONFIRMED: 2+ different reporters (FR-RPT-04) ----
-        // Two unrelated people reporting = credible pattern.
-        penalty_applied = 10;
-        action = 'PATTERN_PENALTY';
-
+        // Deduct 5 points and reset streak
         await pool.query(
           `UPDATE users
-           SET trust_score = GREATEST(trust_score - 10, 0),
+           SET trust_score = GREATEST(trust_score - 5, 0),
                current_streak = 0
            WHERE id = ?`,
           [reported_user_id]
         );
 
-        userMessage = 'Report submitted. Pattern detected — trust score adjusted.';
+        userMessage = 'Report submitted. No-show penalty applied: −5 Trust Points.';
+      } else {
+        // --- CASE 2: Conduct report → Check for pattern (The Shield) ---
 
-        // ---- ESCALATION: 3+ pattern-matched reports (FR-RPT-05) ----
-        // Including the current report, how many total pattern reporters?
-        const totalPatternReporters = distinctReporters + 1; // +1 for current reporter
+        // Count how many DIFFERENT people have reported this user in the last 30 days
+        // (excluding the current reporter — we're checking prior reports)
+        const [priorReports] = await pool.query(
+          `SELECT COUNT(DISTINCT reporter_id) AS distinct_reporters
+           FROM reports
+           WHERE reported_user_id = ?
+             AND reporter_id != ?
+             AND reason IN ('bad_conduct', 'unsafe_driving', 'harassment')
+             AND created_at >= NOW() - INTERVAL 30 DAY`,
+          [reported_user_id, reporter_id]
+        );
 
-        if (totalPatternReporters >= 3) {
-          // Apply an additional −25 escalation penalty
+        const distinctReporters = priorReports[0].distinct_reporters;
+
+        if (distinctReporters === 0) {
+          // ---- SHIELD: First/only reporter → Warning only (FR-RPT-03) ----
+          // One person lying shouldn't ruin someone's trust score.
+          penalty_applied = 0;
+          action = 'WARNING_ONLY';
+          userMessage = 'Report submitted. A system warning has been issued.';
+        } else {
+          // ---- PATTERN CONFIRMED: 2+ different reporters (FR-RPT-04) ----
+          // Two unrelated people reporting = credible pattern.
+          penalty_applied = 10;
+          action = 'PATTERN_PENALTY';
+
           await pool.query(
             `UPDATE users
-             SET trust_score = GREATEST(trust_score - 25, 0)
+             SET trust_score = GREATEST(trust_score - 10, 0),
+                 current_streak = 0
              WHERE id = ?`,
             [reported_user_id]
           );
 
-          penalty_applied += 25; // Total: 10 + 25 = 35
-          userMessage = 'Report submitted. Escalated pattern detected — account flagged for review.';
+          userMessage = 'Report submitted. Pattern detected — trust score adjusted.';
+
+          // ---- ESCALATION: 3+ pattern-matched reports (FR-RPT-05) ----
+          // Including the current report, how many total pattern reporters?
+          const totalPatternReporters = distinctReporters + 1; // +1 for current reporter
+
+          if (totalPatternReporters >= 3) {
+            // Apply an additional −25 escalation penalty
+            await pool.query(
+              `UPDATE users
+               SET trust_score = GREATEST(trust_score - 25, 0)
+               WHERE id = ?`,
+              [reported_user_id]
+            );
+
+            penalty_applied += 25; // Total: 10 + 25 = 35
+            userMessage = 'Report submitted. Escalated pattern detected — account flagged for review.';
+          }
         }
       }
     }
