@@ -3,32 +3,33 @@
 // =============================================================================
 
 import { StyleSheet, Platform, StatusBar } from 'react-native';
+import { sp, fs, wp, hp } from '@/constants/responsive';
 
 export const s = StyleSheet.create({
     root: { flex: 1, backgroundColor: '#F5F0EB' },
 
     // Header 
     header: {
-        paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 28) + 12 : 50,
-        paddingHorizontal: 16,
-        paddingBottom: 16,
+        paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 28) + hp(12) : hp(50),
+        paddingHorizontal: wp(16),
+        paddingBottom: hp(16),
         backgroundColor: '#fff',
         borderBottomWidth: 1,
         borderBottomColor: '#EAE0D8',
         elevation: 2,
         shadowColor: '#000',
         shadowOpacity: 0.05,
-        shadowRadius: 4,
+        shadowRadius: sp(4),
         shadowOffset: { width: 0, height: 1 },
     },
-    headerTitle: { fontSize: 24, fontWeight: '800', color: '#1E1610' },
+    headerTitle: { fontSize: fs(24), fontWeight: '800', color: '#1E1610' },
 
     // Custom Top Tabs
     tabRow: {
         flexDirection: 'row',
         backgroundColor: '#fff',
-        paddingHorizontal: 16,
-        paddingTop: 8,
+        paddingHorizontal: wp(16),
+        paddingTop: hp(8),
         borderBottomWidth: 1,
         borderBottomColor: '#EAE0D8',
         position: 'relative',
@@ -36,17 +37,17 @@ export const s = StyleSheet.create({
     },
     tabBtn: {
         flex: 1,
-        paddingVertical: 14,
+        paddingVertical: hp(14),
         alignItems: 'center',
         justifyContent: 'center',
     },
     tabTextContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
+        gap: sp(6),
     },
     tabText: {
-        fontSize: 14,
+        fontSize: fs(14),
         fontWeight: '700',
         color: '#6B5344',
     },
@@ -56,20 +57,20 @@ export const s = StyleSheet.create({
     activeIndicator: {
         position: 'absolute',
         bottom: -1,
-        height: 3,
+        height: sp(3),
         backgroundColor: '#C24E00',
-        borderTopLeftRadius: 3,
-        borderTopRightRadius: 3,
+        borderTopLeftRadius: sp(3),
+        borderTopRightRadius: sp(3),
         zIndex: 2,
     },
 
     // Main List Layout
     listContent: {
-        padding: 16,
-        paddingBottom: 40,
+        padding: sp(16),
+        paddingBottom: hp(100), // Extra padding to account for tab bar
     },
     listGap: {
-        height: 12,
+        height: hp(12),
     },
 
     // Loading & Empty States
@@ -77,48 +78,48 @@ export const s = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingHorizontal: 32,
+        paddingHorizontal: wp(32),
     },
     emptyTitle: {
-        fontSize: 18,
+        fontSize: fs(18),
         fontWeight: '700',
         color: '#3D2F22',
-        marginTop: 16,
+        marginTop: hp(16),
     },
     emptySub: {
-        fontSize: 14,
+        fontSize: fs(14),
         color: '#6B5344',
         textAlign: 'center',
-        marginTop: 8,
-        lineHeight: 20,
+        marginTop: hp(8),
+        lineHeight: fs(20),
     },
 
     // --- My Ride Card Extensions (Shared from RideCard, tweaked for history) ---
     card: {
         backgroundColor: '#fff',
-        borderRadius: 16,
-        padding: 16,
+        borderRadius: sp(16),
+        padding: sp(16),
         borderWidth: 1,
         borderColor: '#EAE0D8',
         elevation: 2,
         shadowColor: '#000',
         shadowOpacity: 0.05,
-        shadowRadius: 6,
+        shadowRadius: sp(6),
         shadowOffset: { width: 0, height: 2 },
     },
     statusBadgeWrap: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: 12,
+        marginBottom: hp(12),
     },
     statusBadge: {
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 12,
+        paddingHorizontal: wp(10),
+        paddingVertical: hp(4),
+        borderRadius: sp(12),
     },
     statusText: {
-        fontSize: 11,
+        fontSize: fs(11),
         fontWeight: '700',
         textTransform: 'uppercase',
         letterSpacing: 0.5,
@@ -129,29 +130,29 @@ export const s = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginTop: 14,
-        paddingTop: 12,
+        marginTop: hp(14),
+        paddingTop: hp(12),
         borderTopWidth: 1,
         borderTopColor: '#F5F0EB',
     },
-    metaLabel: { fontSize: 11, color: '#6B5344', fontWeight: '600' },
-    metaValue: { fontSize: 13, color: '#1E1610', fontWeight: '800' },
+    metaLabel: { fontSize: fs(11), color: '#6B5344', fontWeight: '600' },
+    metaValue: { fontSize: fs(13), color: '#1E1610', fontWeight: '800' },
 
     // Cancel Booking button (passenger cards)
     cancelBookingBtn: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 6,
-        marginTop: 14,
-        paddingVertical: 10,
-        borderRadius: 12,
+        gap: sp(6),
+        marginTop: hp(14),
+        paddingVertical: hp(10),
+        borderRadius: sp(12),
         backgroundColor: '#FFF6F5',
         borderWidth: 1,
         borderColor: '#FCDCBF',
     },
     cancelBookingBtnText: {
-        fontSize: 13,
+        fontSize: fs(13),
         fontWeight: '700',
         color: '#D9622A',
     },
@@ -159,17 +160,17 @@ export const s = StyleSheet.create({
     // WhatsApp + Cancel side-by-side action row (passenger confirmed bookings)
     actionBtnRow: {
         flexDirection: 'row',
-        gap: 8,
-        marginTop: 14,
+        gap: sp(8),
+        marginTop: hp(14),
     },
     actionBtn: {
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 6,
-        paddingVertical: 10,
-        borderRadius: 12,
+        gap: sp(6),
+        paddingVertical: hp(10),
+        borderRadius: sp(12),
         borderWidth: 1,
     },
     whatsappActionBtn: {
@@ -177,7 +178,7 @@ export const s = StyleSheet.create({
         borderColor: '#FCDCBF',
     },
     whatsappActionBtnText: {
-        fontSize: 13,
+        fontSize: fs(13),
         fontWeight: '700',
         color: '#C24E00',
     },
@@ -186,7 +187,7 @@ export const s = StyleSheet.create({
         borderColor: '#FCDCBF',
     },
     cancelActionBtnText: {
-        fontSize: 13,
+        fontSize: fs(13),
         fontWeight: '700',
         color: '#D9622A',
     },
@@ -195,17 +196,17 @@ export const s = StyleSheet.create({
     bookedBanner: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
+        gap: sp(6),
         backgroundColor: '#F2FAF5',
         borderWidth: 1,
         borderColor: '#3DAA6E',
-        borderRadius: 10,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        marginBottom: 12,
+        borderRadius: sp(10),
+        paddingHorizontal: wp(12),
+        paddingVertical: hp(8),
+        marginBottom: hp(12),
     },
     bookedBannerText: {
-        fontSize: 12,
+        fontSize: fs(12),
         fontWeight: '700',
         color: '#3DAA6E',
     },

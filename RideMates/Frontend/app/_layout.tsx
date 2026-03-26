@@ -3,6 +3,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -24,23 +25,27 @@ function AuthGatekeeper({ children }: { children: React.ReactNode }) {
   const [authChecked, setAuthChecked] = useState(false);
 
   const checkAuth = async () => {
-    const token = await getToken();
-    const seg1 = segments[1] as string | undefined;
-    const inAuthGroup = segments[0] === '(tabs)' && (seg1 === 'index' || seg1 === 'login');
-    const inTabsGroup = segments[0] === '(tabs)';
+    try {
+      const token = await getToken();
+      const seg1 = segments[1] as string | undefined;
+      const inAuthGroup = segments[0] === '(tabs)' && (seg1 === 'index' || seg1 === 'login');
 
-    if (!token) {
-      // Not logged in — lock to signup screen
-      if (!inAuthGroup) {
-        router.replace('/(tabs)' as any);
+      if (!token) {
+        // Not logged in — lock to signup screen
+        if (!inAuthGroup) {
+          router.replace('/(tabs)' as any);
+        }
+      } else {
+        // Logged in — kick out of login screen
+        if (inAuthGroup) {
+          router.replace('/(tabs)/explore');
+        }
       }
-    } else {
-      // Logged in — kick out of login screen
-      if (inAuthGroup) {
-        router.replace('/(tabs)/explore');
-      }
+    } catch (error) {
+      console.error('Auth check error:', error);
+    } finally {
+      setAuthChecked(true);
     }
-    setAuthChecked(true);
   };
 
   // Run on mount
@@ -70,16 +75,18 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AlertProvider>
-        <AuthGatekeeper>
-          <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-          </Stack>
-          <StatusBar style="auto" />
-        </AuthGatekeeper>
-      </AlertProvider>
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <AlertProvider>
+          <AuthGatekeeper>
+            <Stack>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+            </Stack>
+            <StatusBar style="auto" />
+          </AuthGatekeeper>
+        </AlertProvider>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }

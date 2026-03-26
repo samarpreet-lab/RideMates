@@ -173,9 +173,9 @@ export default function MyRideCard({ ride, viewMode, onCancelBooking, onPromptCa
                     </Text>
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={s.metaLabel}>{viewMode === 'passenger' ? 'Amount Paid' : 'Total Revenue (Est)'}</Text>
+                    <Text style={s.metaLabel}>{viewMode === 'passenger' ? 'Amount Paid' : 'Price per Seat'}</Text>
                     <Text style={[s.metaValue, { color: '#C24E00' }]}>
-                        ₹{viewMode === 'passenger' ? ride.price_paid : (ride.capped_price)}
+                        ₹{viewMode === 'passenger' ? ride.price_paid : ride.capped_price}
                     </Text>
                 </View>
             </View>

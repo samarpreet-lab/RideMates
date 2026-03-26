@@ -13,28 +13,21 @@ interface Props {
 }
 
 export default function PriceBreakdown({ ride, seatsSelected }: Props) {
-    const perSeatPrice = Math.round(
-        (parseFloat(String(ride.capped_price)) / Math.max(ride.available_seats, 1)) * 100
-    ) / 100;
+    // capped_price is ALREADY per-seat (stored that way in DB per SRS v1.5)
+    const perSeatPrice = Math.round(parseFloat(String(ride.capped_price)) * 100) / 100;
     const totalForSeats = Math.round(perSeatPrice * seatsSelected * 100) / 100;
 
     return (
         <View style={ds.card}>
-            {/* Base fuel cost */}
+            {/* Base fuel cost (total for trip) */}
             <View style={ds.priceRow}>
-                <Text style={ds.priceLabel}>Base fuel cost</Text>
+                <Text style={ds.priceLabel}>Base fuel cost (total)</Text>
                 <Text style={ds.priceValue}>₹{Number(ride.base_price).toFixed(0)}</Text>
             </View>
 
-            {/* Capped price */}
+            {/* Per seat price */}
             <View style={ds.priceRow}>
-                <Text style={ds.priceLabel}>Ride price (capped)</Text>
-                <Text style={ds.priceValue}>₹{Number(ride.capped_price).toFixed(0)}</Text>
-            </View>
-
-            {/* Per seat */}
-            <View style={ds.priceRow}>
-                <Text style={ds.priceLabel}>Per seat</Text>
+                <Text style={ds.priceLabel}>Price per seat</Text>
                 <Text style={ds.priceValue}>₹{perSeatPrice.toFixed(0)}</Text>
             </View>
 

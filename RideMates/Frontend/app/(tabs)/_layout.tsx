@@ -1,8 +1,16 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
+import { Platform } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { sp, fs } from '@/constants/responsive';
 
 export default function TabLayout() {
+  const insets = useSafeAreaInsets();
+  // Add extra padding for Android gesture navigation bar
+  const bottomPadding = Platform.OS === 'android' ? Math.max(insets.bottom, sp(8)) : sp(8);
+  const tabBarHeight = sp(56) + bottomPadding;
+
   return (
     <Tabs
       screenOptions={{
@@ -16,15 +24,18 @@ export default function TabLayout() {
           elevation: 8,
           shadowColor: '#000',
           shadowOpacity: 0.08,
-          shadowRadius: 8,
+          shadowRadius: sp(8),
           shadowOffset: { width: 0, height: -2 },
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 4,
+          height: tabBarHeight,
+          paddingBottom: bottomPadding,
+          paddingTop: sp(4),
         },
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: fs(11),
           fontWeight: '600',
+        },
+        tabBarIconStyle: {
+          marginBottom: sp(-2),
         },
       }}
     >

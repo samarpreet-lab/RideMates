@@ -281,9 +281,8 @@ export default function RideDetailsScreen() {
     // ─── Main ride detail view ────────────────────────────────────────────
     if (!ride) return null;
 
-    const perSeatPrice = Math.round(
-        (parseFloat(String(ride.capped_price)) / Math.max(ride.available_seats, 1)) * 100
-    ) / 100;
+    // capped_price is ALREADY per-seat (stored that way in DB per SRS v1.5)
+    const perSeatPrice = Math.round(parseFloat(String(ride.capped_price)) * 100) / 100;
     const totalPrice = Math.round(perSeatPrice * seatsSelected * 100) / 100;
     const hasMyBooking = myBooking && myBooking.booking_status !== 'cancelled';
     const canBook = ride.status === 'active' && ride.available_seats > 0 && !hasMyBooking;

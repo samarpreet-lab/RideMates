@@ -14,6 +14,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import api, { deleteToken } from '../../services/api';
 
 // -- Explore sub-components --------------------------------------------------
@@ -26,6 +27,7 @@ import {
   getTrustColor,
 } from '../../components/Explore/constants';
 import { s } from '../../components/Explore/styles';
+import { sp } from '../../constants/responsive';
 import SearchModal from '../../components/Explore/SearchModal';
 import LocationPickerModal from '../../components/Explore/LocationPickerModal';
 import TopIdentityBar from '../../components/Explore/TopIdentityBar';
@@ -37,8 +39,12 @@ import { ExploreSkeleton } from '../../components/ui/SkeletonLoader';
 export default function HomeScreen() {
   const router = useRouter();
   const { showAlert } = useAlert();
+  const insets = useSafeAreaInsets();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Calculate tab bar height to offset bottom sheet
+  const tabBarHeight = sp(56) + (Platform.OS === 'android' ? Math.max(insets.bottom, sp(8)) : sp(8));
 
   // Search modal state
   const [searchModalVisible, setSearchModalVisible] = useState(false);
@@ -67,12 +73,19 @@ export default function HomeScreen() {
 
   const loadData = async () => {
     try {
+      console.log('📱 Loading user profile...');
       const res = await api.get('/auth/profile');
+      console.log('✅ Profile loaded:', res.data.data?.full_name);
       setProfile(res.data.data);
     } catch (error: any) {
+      console.error('❌ Profile load error:', error?.response?.status, error?.message);
       if (error.response?.status === 401) {
         await deleteToken();
         router.replace('/(tabs)' as any);
+      } else {
+        // For other errors (network, server), set profile to null but don't redirect
+        // This allows the UI to show "Hello there" fallback
+        setProfile(null);
       }
     } finally {
       setLoading(false);
@@ -297,6 +310,7 @@ export default function HomeScreen() {
         openSearchModal={openSearchModal}
         handleLogout={handleLogout}
         router={router}
+        tabBarHeight={tabBarHeight}
       />
     </View>
   );

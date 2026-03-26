@@ -54,7 +54,7 @@ export default function RideCard({ ride, onDismissModal }: RideCardProps) {
         </View>
         <View style={s.ridePriceBox}>
           <Text style={s.ridePriceLabel}>₹{ride.capped_price}</Text>
-          <Text style={s.ridePriceSub}>total</Text>
+          <Text style={s.ridePriceSub}>per seat</Text>
         </View>
       </View>
 

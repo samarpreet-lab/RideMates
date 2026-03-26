@@ -12,11 +12,13 @@ import {
 import { useRouter, useFocusEffect } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Local dependencies
 import api, { deleteToken } from '../../services/api';
 import { VEHICLE_TYPES, FUEL_RATES, VEHICLE_MULTIPLIERS, HUB_COORDS } from '../../components/PostRide/constants';
 import { s } from '../../components/PostRide/styles';
+import { sp } from '../../constants/responsive';
 
 // Sub-components
 import RouteSection from '../../components/PostRide/RouteSection';
@@ -62,9 +64,13 @@ function round2(n: number): number {
 export default function PostRideScreen() {
   const router = useRouter();
   const { showAlert } = useAlert();
+  const insets = useSafeAreaInsets();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
+
+  // Calculate tab bar height to add as bottom padding
+  const tabBarHeight = sp(56) + (Platform.OS === 'android' ? Math.max(insets.bottom, sp(8)) : sp(8));
 
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [createdRideId, setCreatedRideId] = useState<string | null>(null);
@@ -380,12 +386,12 @@ export default function PostRideScreen() {
           setWomenOnly={setWomenOnly}
         />
 
-        {/* Spacer for button */}
-        <View style={{ height: 90 }} />
+        {/* Spacer for button + tab bar */}
+        <View style={{ height: 90 + tabBarHeight }} />
       </ScrollView>
 
-      {/* Publish Button */}
-      <View style={s.publishBarWrap}>
+      {/* Publish Button - positioned above tab bar */}
+      <View style={[s.publishBarWrap, { bottom: tabBarHeight }]}>
         <TouchableOpacity
           style={[s.publishBtn, !canPublish() && s.publishBtnDisabled]}
           onPress={handlePublish}

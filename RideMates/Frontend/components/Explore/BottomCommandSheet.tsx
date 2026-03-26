@@ -25,6 +25,7 @@ interface BottomCommandSheetProps {
   openSearchModal: () => void;
   handleLogout: () => void;
   router: Router;
+  tabBarHeight: number;
 }
 
 export default function BottomCommandSheet({
@@ -37,9 +38,10 @@ export default function BottomCommandSheet({
   openSearchModal,
   handleLogout,
   router,
+  tabBarHeight,
 }: BottomCommandSheetProps) {
   return (
-    <Animated.View style={[s.commandSheet, { height: sheetHeight }]}>
+    <Animated.View style={[s.commandSheet, { height: sheetHeight, bottom: tabBarHeight }]}>
       {/* Drag handle + greeting */}
       <TouchableOpacity
         style={s.sheetHandle}
