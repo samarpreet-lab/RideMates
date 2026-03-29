@@ -2,13 +2,13 @@
 // components/Explore/TopIdentityBar.tsx — Avatar + Trust Ring + Role Badge
 // =============================================================================
 
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { s } from './styles';
 import { UserProfile, getInitials } from './constants';
-import ProfileModal from './ProfileModal';
 
 interface TopIdentityBarProps {
   profile: UserProfile | null;
@@ -23,7 +23,7 @@ export default function TopIdentityBar({
   trustColor,
   isFaculty,
 }: TopIdentityBarProps) {
-  const [modalVisible, setModalVisible] = useState(false);
+  const router = useRouter();
 
   return (
     <>
@@ -32,7 +32,7 @@ export default function TopIdentityBar({
           {/* Avatar with role badge */}
           <TouchableOpacity
             style={s.avatarWrapper}
-            onPress={() => setModalVisible(true)}
+            onPress={() => router.push('/(tabs)/profile')}
             activeOpacity={0.85}
           >
             {/* Trust score ring */}
@@ -59,13 +59,6 @@ export default function TopIdentityBar({
         </TouchableOpacity>
       </View>
     </SafeAreaView>
-      <ProfileModal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        profile={profile}
-        trustScore={trustScore}
-        isFaculty={isFaculty}
-      />
     </>
   );
 }

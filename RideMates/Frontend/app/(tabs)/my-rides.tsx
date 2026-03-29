@@ -15,6 +15,7 @@ import {
     Dimensions,
     Linking
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -24,6 +25,7 @@ import { s } from '../../components/MyRides/styles';
 import { useAlert } from '../../components/ui/AlertContext';
 import { MyRidesSkeleton } from '../../components/ui/SkeletonLoader';
 import RideStatusModal from '../../components/ui/RideStatusModal';
+import ReportModal from '../../components/ui/ReportModal';
 
 const { width } = Dimensions.get('window');
 const TAB_WIDTH = width / 2;
@@ -40,6 +42,13 @@ export default function MyRidesScreen() {
     const [publishedRides, setPublishedRides] = useState<any[]>([]);
     const [errorLine, setErrorLine] = useState('');
     const [statusModal, setStatusModal] = useState<any>(null);
+    const [isFlagged, setIsFlagged] = useState(false);
+
+    // Report Modal State
+    const [reportModalVisible, setReportModalVisible] = useState(false);
+    const [reportRideId, setReportRideId] = useState<number>(0);
+    const [reportedUserId, setReportedUserId] = useState<number>(0);
+    const [reportedUserName, setReportedUserName] = useState<string>('');
 
     // Animation value for the sliding underline
     const slideAnim = useRef(new Animated.Value(0)).current;
@@ -55,12 +64,25 @@ export default function MyRidesScreen() {
         setLoading(true);
         setErrorLine('');
         try {
-            const res = await api.get('/rides/my');
+            const [res, profileRes] = await Promise.all([
+                api.get('/rides/my'),
+                api.get('/auth/profile').catch(() => ({ data: { success: false, data: null } }))
+            ]);
+            
             if (res.data.success) {
                 setBookedRides(res.data.data.as_passenger || []);
                 setPublishedRides(res.data.data.as_driver || []);
             } else {
                 setErrorLine(res.data.message || 'Could not fetch rides.');
+            }
+
+            if (profileRes.data && profileRes.data.success && profileRes.data.data) {
+                setIsFlagged(!!profileRes.data.data.flagged_for_review);
+            }
+
+            // Check for rides that need completion prompts (driver only, > 2h past departure)
+            if (res.data.success && res.data.data.as_driver) {
+                checkCompletionPrompts(res.data.data.as_driver);
             }
         } catch (error: any) {
             console.error('Error fetching my rides:', error);
@@ -70,13 +92,71 @@ export default function MyRidesScreen() {
         }
     };
 
+    const checkCompletionPrompts = async (driverRides: any[]) => {
+        try {
+            const now = new Date();
+            for (const ride of driverRides) {
+                if (ride.status === 'active') {
+                    const departure = new Date(ride.departure_time);
+                    const hoursSinceDeparture = (now.getTime() - departure.getTime()) / (1000 * 60 * 60);
+                    
+                    if (hoursSinceDeparture >= 2) {
+                        const promptKey = `@completion_prompt_${ride.id}`;
+                        const hasPrompted = await AsyncStorage.getItem(promptKey);
+
+                        if (!hasPrompted) {
+                            // Only prompt once
+                            await AsyncStorage.setItem(promptKey, 'true');
+                            
+                            setStatusModal({
+                                visible: true,
+                                type: 'success',
+                                iconName: 'check-circle-outline',
+                                title: 'Ride Completed?',
+                                message: `It looks like your ride to ${ride.destination_city} has finished.\n\nWould you like to mark it as completed now?`,
+                                pillText: 'ACTION REQUIRED',
+                                primaryLabel: 'Mark Completed',
+                                primaryIcon: 'check',
+                                onPrimaryPress: () => {
+                                    setStatusModal(null);
+                                    handleCompleteRide(ride.id);
+                                },
+                                secondaryLabel: 'Not Yet',
+                                onSecondaryPress: () => setStatusModal(null),
+                            });
+                            
+                            // Break after showing one prompt so we don't bombard the user
+                            break;
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Error checking completion prompts', e);
+        }
+    };
+
+    const handleCompleteRide = async (rideId: number) => {
+        try {
+            const res = await api.put(`/rides/${rideId}/complete`);
+            if (res.data.success) {
+                showAlert({ type: 'success', title: 'Ride Completed', message: res.data.message });
+                fetchMyRides();
+            } else {
+                showAlert({ type: 'error', title: 'Error', message: res.data.message || 'Could not complete ride.' });
+            }
+        } catch (error: any) {
+            showAlert({ type: 'error', title: 'Error', message: error.response?.data?.message || 'Failed to complete ride.' });
+        }
+    };
+
     const handlePromptCancelBooking = (bookingId: number, penaltyWarning: string, ride: any) => {
         setStatusModal({
             visible: true,
             type: 'warning',
             iconName: 'alert-circle',
             title: 'Cancel Booking?',
-            message: `Are you sure you want to cancel your booking for ${ride.origin_city} → ${ride.destination_city}?\n\n${penaltyWarning}`,
+            message: `Are you sure you want to cancel your booking for ${ride.origin_city} → ${ride.destination_city}?\n\n${penaltyWarning}\n\nCancellation Policy:\n• > 4 hours before: No penalty\n• 30m - 4 hours before: −2 Trust Points\n• < 30m or after: −5 Trust Points`,
             pillText: 'WARNING',
             primaryLabel: 'Cancel Booking',
             primaryIcon: 'cancel',
@@ -213,6 +293,19 @@ export default function MyRidesScreen() {
                 />
             </View>
 
+            {/* System Warning Banner */}
+            {isFlagged && (
+                <View style={{ backgroundColor: '#FEF2F2', padding: 16, borderBottomWidth: 1, borderBottomColor: '#FEE2E2', flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+                    <MaterialIcons name="error-outline" size={24} color="#EF4444" style={{ marginTop: 2 }} />
+                    <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#991B1B', marginBottom: 4 }}>System Warning</Text>
+                        <Text style={{ fontSize: 13, color: '#B91C1C', lineHeight: 18 }}>
+                            Your account has been flagged for multiple reports indicating unsafe behavior, misconduct, or high cancellation rates. Further reports may result in account suspension.
+                        </Text>
+                    </View>
+                </View>
+            )}
+
             {/* Content Area */}
             {loading ? (
                 <MyRidesSkeleton />
@@ -236,6 +329,29 @@ export default function MyRidesScreen() {
                             viewMode={activeTab === 'booked' ? 'passenger' : 'driver'}
                             onCancelBooking={(id) => handleCancelBooking(id, item)}
                             onPromptCancel={handlePromptCancelBooking}
+                            onReport={(ride) => {
+                                setReportRideId(ride.id);
+                                // If I'm a passenger, I report the driver. If I'm a driver, I report the passenger.
+                                // NOTE: For driver reporting passenger, we'd need multiple selections in the future,
+                                // but for MVP, we just use the first booked user if not defined.
+                                // Actually, MyRides shows passenger rides. The reported user depends on viewMode.
+                                if (activeTab === 'booked') {
+                                    setReportedUserId(ride.driver_id);
+                                    setReportedUserName(ride.driver_name);
+                                } else {
+                                    // For published rides, we might not have a single passenger id.
+                                    // Let's just use the first booking's user for now or prompt.
+                                    // Since backend isn't sending passenger lists here, we'll just guard it.
+                                    if (ride.passenger_id) {
+                                        setReportedUserId(ride.passenger_id);
+                                        setReportedUserName(ride.passenger_name || 'Passenger');
+                                    } else {
+                                        showAlert({ type: 'warning', title: 'Cannot Report', message: 'Passenger reporting from this screen requires navigating to passenger list.'});
+                                        return;
+                                    }
+                                }
+                                setReportModalVisible(true);
+                            }}
                         />
                     )}
                 />
@@ -257,6 +373,15 @@ export default function MyRidesScreen() {
                     label: statusModal.secondaryLabel,
                     onPress: statusModal.onSecondaryPress || (() => setStatusModal(null))
                 } : undefined}
+            />
+
+            <ReportModal
+                visible={reportModalVisible}
+                rideId={reportRideId}
+                reportedUserId={reportedUserId}
+                reportedUserName={reportedUserName}
+                onClose={() => setReportModalVisible(false)}
+                onSuccess={() => setReportModalVisible(false)}
             />
         </View>
     );

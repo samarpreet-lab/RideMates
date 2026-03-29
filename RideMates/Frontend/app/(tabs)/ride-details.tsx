@@ -76,14 +76,12 @@ export default function RideDetailsScreen() {
 
             if (res.data.success) {
                 setRide(res.data.data);
-                if (res.data.data.my_booking) {
-                    setMyBooking(res.data.data.my_booking);
-                } else {
-                    setMyBooking(null);
-                }
-                if (profileRes.data.success) {
+                setMyBooking(res.data.data.my_booking || null);
+                
+                if (profileRes.data && profileRes.data.success) {
                     setProfile(profileRes.data.data);
                 }
+
                 setState('detail');
             } else {
                 setErrorMsg(res.data.message || 'Failed to load ride details.');

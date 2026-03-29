@@ -16,9 +16,10 @@ interface MyRideCardProps {
     viewMode: 'passenger' | 'driver';
     onCancelBooking?: (bookingId: number) => void;
     onPromptCancel?: (bookingId: number, penaltyWarning: string, ride: any) => void;
+    onReport?: (ride: any) => void;
 }
 
-export default function MyRideCard({ ride, viewMode, onCancelBooking, onPromptCancel }: MyRideCardProps) {
+export default function MyRideCard({ ride, viewMode, onCancelBooking, onPromptCancel, onReport }: MyRideCardProps) {
     const router = useRouter();
     const { showAlert } = useAlert();
 
@@ -180,10 +181,10 @@ export default function MyRideCard({ ride, viewMode, onCancelBooking, onPromptCa
                 </View>
             </View>
 
-            {/* Action row: WhatsApp contact + Cancel (passenger confirmed only) */}
-            {canCancel && (
+            {/* Action row */}
+            {(canCancel || status === 'completed') && (
                 <View style={s.actionBtnRow}>
-                    {!!ride.driver_phone && (
+                    {canCancel && !!ride.driver_phone && (
                         <TouchableOpacity
                             style={[s.actionBtn, s.whatsappActionBtn]}
                             activeOpacity={0.8}
@@ -193,14 +194,26 @@ export default function MyRideCard({ ride, viewMode, onCancelBooking, onPromptCa
                             <Text style={s.whatsappActionBtnText}>WhatsApp</Text>
                         </TouchableOpacity>
                     )}
-                    <TouchableOpacity
-                        style={[s.actionBtn, s.cancelActionBtn]}
-                        activeOpacity={0.8}
-                        onPress={handleCancelBooking}
-                    >
-                        <MaterialIcons name="cancel" size={15} color="#D9622A" />
-                        <Text style={s.cancelActionBtnText}>Cancel</Text>
-                    </TouchableOpacity>
+                    {canCancel && (
+                        <TouchableOpacity
+                            style={[s.actionBtn, s.cancelActionBtn]}
+                            activeOpacity={0.8}
+                            onPress={handleCancelBooking}
+                        >
+                            <MaterialIcons name="cancel" size={15} color="#D9622A" />
+                            <Text style={s.cancelActionBtnText}>Cancel</Text>
+                        </TouchableOpacity>
+                    )}
+                    {status === 'completed' && (
+                        <TouchableOpacity
+                            style={[s.actionBtn, { backgroundColor: '#FFF6F5', borderColor: '#FCDCBF' }]}
+                            activeOpacity={0.8}
+                            onPress={() => onReport?.(ride)}
+                        >
+                            <MaterialIcons name="report-problem" size={15} color="#D9622A" />
+                            <Text style={[s.whatsappActionBtnText, { color: '#D9622A' }]}>Report</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
             )}
         </TouchableOpacity>

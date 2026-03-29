@@ -177,6 +177,21 @@ async function sendOtp(req, res) {
       });
     }
 
+    // --- Rate limiting (SRS FR-AUTH-09): User must wait 60s between requests ---
+    const [recent60s] = await pool.query(
+      `SELECT COUNT(*) as count FROM user_otps
+       WHERE email = ? AND created_at > NOW() - INTERVAL 60 SECOND`,
+      [email]
+    );
+
+    if (recent60s[0].count > 0) {
+      return res.status(429).json({
+        success: false,
+        message: 'Please wait 60 seconds before requesting a new OTP.',
+        error: 'RATE_LIMITED_60S',
+      });
+    }
+
     // --- Generate OTP and hash it ---
     const otp = generateOTP();
     const otpHash = hashOTP(otp);
@@ -273,15 +288,29 @@ async function sendOtp(req, res) {
       `,
     };
 
-    await transporter.sendMail(mailOptions);
+    // Try sending the email. If it fails, delete the OTP so they aren't rate limited
+    try {
+      await transporter.sendMail(mailOptions);
+      console.log(`📧 OTP sent to ${email} (purpose: ${purpose})`);
 
-    console.log(`📧 OTP sent to ${email} (purpose: ${purpose})`);
-
-    // --- Return success (never expose the OTP in the response!) ---
-    res.status(200).json({
-      success: true,
-      message: 'OTP sent successfully! Check your email.',
-    });
+      // --- Return success (never expose the OTP in the response!) ---
+      res.status(200).json({
+        success: true,
+        message: 'OTP sent successfully! Check your email.',
+      });
+    } catch (mailError) {
+      console.error(`❌ SMTP Error sending OTP to ${email}:`, mailError.message);
+      
+      // Delete the OTP hash we just inserted so they don't get unfairly rate limited
+      // or stuck unable to request a new one if the SMTP issue resolves
+      await pool.query('DELETE FROM user_otps WHERE email = ? AND otp_hash = ?', [email, otpHash]);
+      
+      return res.status(503).json({
+        success: false,
+        message: 'We are having trouble sending the verification email right now. Please try again in a few minutes.',
+        error: 'SMTP_SERVICE_UNAVAILABLE',
+      });
+    }
   } catch (error) {
     console.error('Error in sendOtp:', error);
     res.status(500).json({
@@ -509,7 +538,8 @@ async function getProfile(req, res) {
   try {
     const [users] = await pool.query(
       `SELECT id, full_name, email, phone, university, role,
-              profile_photo, gender, trust_score, current_streak, created_at
+              profile_photo, gender, trust_score, current_streak, created_at,
+              flagged_for_review
        FROM users WHERE id = ?`,
       [req.user.id]
     );
