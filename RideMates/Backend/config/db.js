@@ -12,8 +12,8 @@ const pool = mysql.createPool({
   // SRS NFR-SEC-05: Database connections SHALL use SSL/TLS encryption.
   // Use CA certificate for Aiven SSL requirement
   ssl: process.env.DB_SSL === 'false' ? false : {
-    rejectUnauthorized: true,
-    ca: [fs.readFileSync(path.join(__dirname, '../ca-certificate.pem'), 'utf8')]
+    rejectUnauthorized: process.env.DB_CA_CERT ? true : false,
+    ca: process.env.DB_CA_CERT ? [process.env.DB_CA_CERT] : undefined
   },
   waitForConnections: true,
   connectionLimit: 10,
