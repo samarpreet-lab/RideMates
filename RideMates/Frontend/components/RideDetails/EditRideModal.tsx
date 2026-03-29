@@ -18,9 +18,10 @@ interface EditRideModalProps {
     ride: Ride;
     onClose: () => void;
     onSave: (updates: Partial<Ride>) => Promise<boolean>;
+    onSaveSuccess?: () => void;
 }
 
-export default function EditRideModal({ visible, ride, onClose, onSave }: EditRideModalProps) {
+export default function EditRideModal({ visible, ride, onClose, onSave, onSaveSuccess }: EditRideModalProps) {
     const [loading, setLoading] = useState(false);
 
     const [departureDate, setDepartureDate] = useState(new Date(ride.departure_time));
@@ -60,6 +61,7 @@ export default function EditRideModal({ visible, ride, onClose, onSave }: EditRi
             is_women_only: isWomenOnly ? 1 : 0 as any,
         });
         if (success) {
+            onSaveSuccess?.();
             onClose();
         }
         setLoading(false);

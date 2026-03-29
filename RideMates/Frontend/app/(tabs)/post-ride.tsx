@@ -7,7 +7,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity,
-  ActivityIndicator, ScrollView, Platform, StatusBar
+  ActivityIndicator, ScrollView, Platform, StatusBar, KeyboardAvoidingView
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -334,80 +334,82 @@ export default function PostRideScreen() {
         <Text style={s.headerTitle}>Post a Ride</Text>
       </View>
 
-      <ScrollView
-        style={s.scrollView}
-        contentContainerStyle={s.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <RouteSection
-          origin={origin}
-          destination={destination}
-          distanceKm={distanceKm}
-          departureDate={departureDate}
-          departureTime={departureTime}
-          isEmergencyRoute={isEmergencyRoute}
-          setLocPickerTarget={setLocPickerTarget}
-          setLocQuery={setLocQuery}
-          setShowDatePicker={setShowDatePicker}
-          setShowTimePicker={setShowTimePicker}
-          setIsEmergencyRoute={setIsEmergencyRoute}
-        />
-
-        <VehicleSection
-          vehicleType={vehicleType}
-          setVehicleType={setVehicleType}
-          seats={seats}
-          setSeats={setSeats}
-          maxSeats={maxSeats}
-          mileage={mileage}
-          setMileage={setMileage}
-          fuelType={fuelType}
-          setFuelType={setFuelType}
-        />
-
-        <PricingSection
-          distanceKm={distanceKm}
-          vehicleType={vehicleType}
-          driverPrice={driverPrice}
-          setDriverPrice={setDriverPrice}
-          basePrice={basePrice}
-          basePerSeat={basePerSeat}
-          recommendedPerSeat={recommendedPerSeat}
-          maxPerSeat={maxPerSeat}
-          seats={seats}
-          totalEarnings={totalEarnings}
-          instantBooking={instantBooking}
-          setInstantBooking={setInstantBooking}
-          instantAck={instantAck}
-          setInstantAck={setInstantAck}
-          isFemale={isFemale}
-          womenOnly={womenOnly}
-          setWomenOnly={setWomenOnly}
-        />
-
-        {/* Spacer for button + tab bar */}
-        <View style={{ height: 90 + tabBarHeight }} />
-      </ScrollView>
-
-      {/* Publish Button - positioned above tab bar */}
-      <View style={[s.publishBarWrap, { bottom: tabBarHeight }]}>
-        <TouchableOpacity
-          style={[s.publishBtn, !canPublish() && s.publishBtnDisabled]}
-          onPress={handlePublish}
-          activeOpacity={0.87}
-          disabled={publishing || !canPublish()}
+        <ScrollView
+          style={s.scrollView}
+          contentContainerStyle={s.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          {publishing ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <>
-              <MaterialIcons name="publish" size={20} color="#fff" />
-              <Text style={s.publishBtnText}>Publish Ride</Text>
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
+          <RouteSection
+            origin={origin}
+            destination={destination}
+            distanceKm={distanceKm}
+            departureDate={departureDate}
+            departureTime={departureTime}
+            isEmergencyRoute={isEmergencyRoute}
+            setLocPickerTarget={setLocPickerTarget}
+            setLocQuery={setLocQuery}
+            setShowDatePicker={setShowDatePicker}
+            setShowTimePicker={setShowTimePicker}
+            setIsEmergencyRoute={setIsEmergencyRoute}
+          />
+
+          <VehicleSection
+            vehicleType={vehicleType}
+            setVehicleType={setVehicleType}
+            seats={seats}
+            setSeats={setSeats}
+            maxSeats={maxSeats}
+            mileage={mileage}
+            setMileage={setMileage}
+            fuelType={fuelType}
+            setFuelType={setFuelType}
+          />
+
+          <PricingSection
+            distanceKm={distanceKm}
+            vehicleType={vehicleType}
+            driverPrice={driverPrice}
+            setDriverPrice={setDriverPrice}
+            basePrice={basePrice}
+            basePerSeat={basePerSeat}
+            recommendedPerSeat={recommendedPerSeat}
+            maxPerSeat={maxPerSeat}
+            seats={seats}
+            totalEarnings={totalEarnings}
+            instantBooking={instantBooking}
+            setInstantBooking={setInstantBooking}
+            instantAck={instantAck}
+            setInstantAck={setInstantAck}
+            isFemale={isFemale}
+            womenOnly={womenOnly}
+            setWomenOnly={setWomenOnly}
+          />
+
+          {/* Publish Button - flows with content */}
+          <View style={[s.publishBarWrap, { marginBottom: tabBarHeight }]}>
+            <TouchableOpacity
+              style={[s.publishBtn, !canPublish() && s.publishBtnDisabled]}
+              onPress={handlePublish}
+              activeOpacity={0.87}
+              disabled={publishing || !canPublish()}
+            >
+              {publishing ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <MaterialIcons name="publish" size={20} color="#fff" />
+                  <Text style={s.publishBtnText}>Publish Ride</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }

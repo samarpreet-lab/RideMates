@@ -230,7 +230,6 @@ export const s = StyleSheet.create({
 
     // Publish button
     publishBarWrap: {
-        position: 'absolute', bottom: 0, left: 0, right: 0,
         backgroundColor: '#fff', paddingHorizontal: wp(16), paddingVertical: hp(12),
         paddingBottom: Platform.OS === 'ios' ? hp(34) : hp(16),
         borderTopWidth: 1, borderTopColor: '#EAE0D8',

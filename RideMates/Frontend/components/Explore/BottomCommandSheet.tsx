@@ -41,7 +41,7 @@ export default function BottomCommandSheet({
   tabBarHeight,
 }: BottomCommandSheetProps) {
   return (
-    <Animated.View style={[s.commandSheet, { height: sheetHeight, bottom: tabBarHeight }]}>
+    <Animated.View style={[s.commandSheet, { height: sheetHeight, bottom: 0 }]}>
       {/* Drag handle + greeting */}
       <TouchableOpacity
         style={s.sheetHandle}

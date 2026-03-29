@@ -67,8 +67,8 @@ export default function HomeScreen() {
   const [customDate, setCustomDate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  // Bottom sheet animation: collapsed = 240, expanded = 440
-  const sheetHeight = useRef(new Animated.Value(240)).current;
+  // Bottom sheet animation: collapsed = 200, expanded = 290
+  const sheetHeight = useRef(new Animated.Value(200)).current;
   const [sheetExpanded, setSheetExpanded] = useState(false);
 
   const loadData = async () => {
@@ -107,7 +107,7 @@ export default function HomeScreen() {
   );
 
   const toggleSheet = () => {
-    const toValue = sheetExpanded ? 240 : 320;
+    const toValue = sheetExpanded ? 200 : 290;
     Animated.spring(sheetHeight, {
       toValue,
       useNativeDriver: false,

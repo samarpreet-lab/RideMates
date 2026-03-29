@@ -12,6 +12,9 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { authStyles as s } from './styles';
@@ -40,8 +43,16 @@ export default function OtpStep({
   verifyButtonText,
 }: OtpStepProps) {
   return (
-    <>
-      <View style={s.inputGroup}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ flexGrow: 1 }}
+      >
+        <View style={s.inputGroup}>
         <View style={s.labelRow}>
           <Text style={s.label}>6-Digit OTP</Text>
           {otpSent && <Text style={s.statusBadge}>Sent to your email</Text>}
@@ -101,7 +112,8 @@ export default function OtpStep({
             </>
           )}
         </TouchableOpacity>
-      </View>
-    </>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }

@@ -431,6 +431,7 @@ export default function RideDetailsScreen() {
                     ride={ride}
                     onClose={() => setEditModalVisible(false)}
                     onSave={handleEditSave}
+                    onSaveSuccess={fetchRide}
                 />
             )}
 
