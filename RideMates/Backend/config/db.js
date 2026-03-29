@@ -1,6 +1,4 @@
 const mysql = require('mysql2/promise');
-const fs = require('fs');
-const path = require('path');
 require('dotenv').config();
 
 const pool = mysql.createPool({
@@ -9,12 +7,7 @@ const pool = mysql.createPool({
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-  // SRS NFR-SEC-05: Database connections SHALL use SSL/TLS encryption.
-  // Use CA certificate for Aiven SSL requirement
-  ssl: process.env.DB_SSL === 'false' ? false : {
-    rejectUnauthorized: process.env.DB_CA_CERT ? true : false,
-    ca: process.env.DB_CA_CERT ? [process.env.DB_CA_CERT] : undefined
-  },
+  ssl: false,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
