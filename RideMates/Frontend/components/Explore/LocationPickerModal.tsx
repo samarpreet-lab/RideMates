@@ -1,7 +1,7 @@
 // =============================================================================
 // components/Explore/LocationPickerModal.tsx — Full-Screen Location Picker
 // =============================================================================
-// Hybrid Geocoding (FR-MAP-01): Local hubs first → Photon API fallback.
+// Hybrid Geocoding (FR-MAP-01): Local hubs first → LocationIQ API search.
 // =============================================================================
 
 import React, { useRef } from 'react';
@@ -20,7 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { s } from './styles';
 import { ALL_HUBS, QUICK_ORIGINS, QUICK_DESTINATIONS } from './constants';
-import usePhotonSearch from '../../hooks/usePhotonSearch';
+import useLocationIQSearch from '../../hooks/useLocationIQSearch';
 
 interface LocationPickerModalProps {
   visible: boolean;
@@ -41,16 +41,12 @@ export default function LocationPickerModal({
 }: LocationPickerModalProps) {
   const inputRef = useRef<TextInput>(null);
 
-  // Local hub filtering
-  const filteredHubs = query.trim().length > 0
-    ? ALL_HUBS.filter((h) =>
-      h.label.toLowerCase().includes(query.toLowerCase()) ||
-      h.subtitle.toLowerCase().includes(query.toLowerCase())
-    )
-    : ALL_HUBS;
+  // LocationIQ search (combines local hubs + API results)
+  const { results: locationResults, loading: locationLoading } = useLocationIQSearch(query, ALL_HUBS);
 
-  // Photon fallback (only fires when no local matches & 3+ chars after 450ms)
-  const { photonResults, loading: photonLoading } = usePhotonSearch(query, ALL_HUBS, {});
+  // Separate local from API results
+  const localHubResults = locationResults.filter((r) => r.source === 'local');
+  const apiResults = locationResults.filter((r) => r.source === 'locationiq');
 
   const quickChips = target === 'origin' ? QUICK_ORIGINS : QUICK_DESTINATIONS;
 
@@ -98,64 +94,72 @@ export default function LocationPickerModal({
           )}
         </View>
 
-        {/* Hub list — local results */}
+        {/* Hub list — local results + LocationIQ API results */}
         <FlatList
-          data={filteredHubs}
+          data={locationResults}
           keyExtractor={(item) => item.id}
           keyboardShouldPersistTaps="always"
           ListHeaderComponent={
-            <Text style={s.locPickerSectionLabel}>
-              {target === 'origin' ? 'CAMPUS HUBS & PLACES' : 'DESTINATIONS'}
-            </Text>
+            localHubResults.length > 0 ? (
+              <Text style={s.locPickerSectionLabel}>
+                {target === 'origin' ? 'CAMPUS HUBS & PLACES' : 'DESTINATIONS'}
+              </Text>
+            ) : null
           }
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={s.locHubItem}
-              onPress={() => onSelect(item.label)}
-              activeOpacity={0.75}
-            >
-              <View style={s.locHubIconWrap}>
-                <MaterialIcons name={item.icon} size={20} color="#C24E00" />
-              </View>
-              <View style={s.locHubTextWrap}>
-                <Text style={s.locHubName}>{item.label}</Text>
-                <Text style={s.locHubSubtitle}>{item.subtitle}</Text>
-              </View>
-              <MaterialIcons name="chevron-right" size={18} color="#ddd" />
-            </TouchableOpacity>
-          )}
+          renderItem={({ item }) => {
+            const isLocal = item.source === 'local';
+            const iconColor = isLocal ? '#C24E00' : '#6B5344';
+            const iconName = isLocal ? (item as any).icon : 'location-on';
+
+            return (
+              <TouchableOpacity
+                style={s.locHubItem}
+                onPress={() => onSelect(item.label)}
+                activeOpacity={0.75}
+              >
+                <View style={s.locHubIconWrap}>
+                  <MaterialIcons name={iconName} size={20} color={iconColor} />
+                </View>
+                <View style={s.locHubTextWrap}>
+                  <Text style={s.locHubName}>{item.label}</Text>
+                  <Text style={s.locHubSubtitle}>{item.subtitle}</Text>
+                </View>
+                <MaterialIcons name="chevron-right" size={18} color="#ddd" />
+              </TouchableOpacity>
+            );
+          }}
           ItemSeparatorComponent={() => <View style={s.locHubSeparator} />}
           ListFooterComponent={
             <>
-              {/* Photon API results — shown below local hubs */}
-              {photonLoading && (
+              {/* Show section header for API results */}
+              {apiResults.length > 0 && (
+                <Text style={s.locPickerSectionLabel}>
+                  {localHubResults.length > 0 ? 'NEARBY PLACES' : 'SEARCH RESULTS'}
+                </Text>
+              )}
+
+              {/* Loading indicator */}
+              {locationLoading && (
                 <View style={{ alignItems: 'center', paddingVertical: 16 }}>
                   <ActivityIndicator size="small" color="#C24E00" />
-                  <Text style={{ fontSize: 12, color: '#A8937F', marginTop: 6 }}>Searching nearby places...</Text>
+                  <Text style={{ fontSize: 12, color: '#A8937F', marginTop: 6 }}>
+                    Searching locations...
+                  </Text>
                 </View>
               )}
-              {photonResults.length > 0 && (
-                <>
-                  <Text style={s.locPickerSectionLabel}>NEARBY PLACES</Text>
-                  {photonResults.map((item) => (
-                    <TouchableOpacity
-                      key={item.id}
-                      style={s.locHubItem}
-                      onPress={() => onSelect(item.label)}
-                      activeOpacity={0.75}
-                    >
-                      <View style={s.locHubIconWrap}>
-                        <MaterialIcons name="public" size={20} color="#6B5344" />
-                      </View>
-                      <View style={s.locHubTextWrap}>
-                        <Text style={s.locHubName}>{item.label}</Text>
-                        <Text style={s.locHubSubtitle}>{item.subtitle}</Text>
-                      </View>
-                      <MaterialIcons name="chevron-right" size={18} color="#ddd" />
-                    </TouchableOpacity>
-                  ))}
-                </>
-              )}
+
+              {/* No results message */}
+              {!locationLoading &&
+                localHubResults.length === 0 &&
+                apiResults.length === 0 &&
+                query.trim().length > 0 && (
+                  <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+                    <MaterialIcons name="location-off" size={32} color="#C24E00" opacity={0.3} />
+                    <Text style={{ fontSize: 14, color: '#A8937F', marginTop: 8 }}>
+                      No locations found
+                    </Text>
+                  </View>
+                )}
             </>
           }
           contentContainerStyle={{ paddingBottom: 20 }}
