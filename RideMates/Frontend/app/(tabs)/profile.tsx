@@ -7,13 +7,14 @@
 // Accessible via avatar tap on Explore screen.
 // =============================================================================
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity, ActivityIndicator,
     TextInput, Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import api, { deleteToken } from '../../services/api';
 import { s } from '../../components/Profile/styles';
 import { useAlert } from '../../components/ui/AlertContext';
@@ -33,6 +34,8 @@ interface Profile {
 export default function ProfileScreen() {
     const router = useRouter();
     const { showAlert } = useAlert();
+    // FIX: Track mount state to prevent state updates after unmount
+    const isMounted = useRef(true);
 
     const [loading, setLoading] = useState(true);
     const [profile, setProfile] = useState<Profile | null>(null);
@@ -41,21 +44,30 @@ export default function ProfileScreen() {
     const [editPhone, setEditPhone] = useState('');
     const [saving, setSaving] = useState(false);
 
-    useEffect(() => { fetchProfile(); }, []);
+    // FIX: Cleanup on unmount
+    useEffect(() => {
+        isMounted.current = true;
+        fetchProfile();
+        return () => { isMounted.current = false; };
+    }, []);
 
     const fetchProfile = async () => {
         setLoading(true);
         try {
             const res = await api.get('/auth/profile');
-            if (res.data.success) {
+            if (isMounted.current && res.data.success) {
                 setProfile(res.data.data);
                 setEditName(res.data.data.full_name);
                 setEditPhone(res.data.data.phone || '');
             }
         } catch (err: any) {
-            showAlert({ type: 'error', title: 'Error', message: 'Could not load profile.' });
+            if (isMounted.current) {
+                showAlert({ type: 'error', title: 'Error', message: 'Could not load profile.' });
+            }
         } finally {
-            setLoading(false);
+            if (isMounted.current) {
+                setLoading(false);
+            }
         }
     };
 
@@ -64,6 +76,14 @@ export default function ProfileScreen() {
             showAlert({ type: 'error', title: 'Error', message: 'Name cannot be empty.' });
             return;
         }
+        
+        // FIX: Validate phone format if provided
+        const phoneClean = editPhone.trim().replace(/[\s-]/g, '');
+        if (phoneClean && !/^(\+91)?[6-9]\d{9}$/.test(phoneClean)) {
+            showAlert({ type: 'error', title: 'Invalid Phone', message: 'Please enter a valid 10-digit Indian phone number' });
+            return;
+        }
+        
         setSaving(true);
         try {
             const res = await api.put('/auth/profile', {
@@ -90,8 +110,27 @@ export default function ProfileScreen() {
             {
                 text: 'Log Out', style: 'destructive',
                 onPress: async () => {
+                    // FIX: Clear all app state on logout
                     await deleteToken();
-                    router.replace('/' as any);
+                    
+                    // Clear AsyncStorage completion prompts and other cached data
+                    try {
+                        const keys = await AsyncStorage.getAllKeys();
+                        const appKeys = keys.filter(k => k.startsWith('@completion_prompt_') || k.startsWith('@ridemates_'));
+                        if (appKeys.length > 0) {
+                            await AsyncStorage.multiRemove(appKeys);
+                        }
+                    } catch (e) {
+                        console.warn('Error clearing AsyncStorage:', e);
+                    }
+                    
+                    // Reset local state
+                    setProfile(null);
+                    setEditing(false);
+                    setEditName('');
+                    setEditPhone('');
+                    
+                    router.replace('/(tabs)/index' as any);
                 },
             },
         ]);

@@ -131,13 +131,25 @@ export interface Ride {
 // ─── Helper Functions ──────────────────────────────────────────────────────
 
 export function getInitials(fullName: string): string {
-  const parts = fullName.trim().split(' ');
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-  return parts[0].slice(0, 2).toUpperCase();
+  // Safely handle null, undefined, or empty names
+  if (!fullName || typeof fullName !== 'string' || !fullName.trim()) {
+    return 'U'; // Default fallback initial
+  }
+  const parts = fullName.trim().split(' ').filter(p => p.length > 0);
+  if (parts.length === 0) return 'U';
+  if (parts.length >= 2 && parts[0].length > 0 && parts[1].length > 0) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return (parts[0].slice(0, 2) || 'U').toUpperCase();
 }
 
 export function getFirstName(fullName: string): string {
+  // Safely handle null, undefined, or empty names
+  if (!fullName || typeof fullName !== 'string' || !fullName.trim()) {
+    return 'User'; // Default fallback name
+  }
   const first = fullName.trim().split(/\s+/)[0];
+  if (!first || first.length === 0) return 'User';
   return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
 }
 
@@ -149,8 +161,10 @@ export function getGreeting(): string {
 }
 
 export function getTrustColor(score: number): string {
-  if (score >= 75) return '#3DAA6E';
-  if (score >= 50) return '#D4960F';
+  // Safely handle invalid scores
+  const validScore = typeof score === 'number' && !isNaN(score) ? score : 100;
+  if (validScore >= 75) return '#3DAA6E';
+  if (validScore >= 50) return '#D4960F';
   return '#D9622A';
 }
 

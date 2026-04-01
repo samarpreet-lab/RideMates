@@ -17,10 +17,19 @@ import { CONFIG } from '../constants/config';
 
 const TOKEN_KEY = 'ridemates_jwt_token';
 
+// FIX: Auth expiry callback for immediate navigation on 401
+let onAuthExpiredCallback: (() => void) | null = null;
+
+/** Register a callback to be invoked when the JWT token expires (401 received) */
+export function onAuthExpired(callback: () => void): () => void {
+  onAuthExpiredCallback = callback;
+  return () => { onAuthExpiredCallback = null; };
+}
+
 // --- Create Axios instance ---
 const api = axios.create({
   baseURL: CONFIG.API_BASE_URL,
-  timeout: 10000, // If the backend takes longer than 10 seconds, fail safely
+  timeout: 15000, // 15 seconds for slower mobile networks
 });
 
 // --- JWT Token helpers ---
@@ -28,17 +37,31 @@ const api = axios.create({
 
 /** Save JWT token to secure device storage */
 export async function saveToken(token: string): Promise<void> {
-  await SecureStore.setItemAsync(TOKEN_KEY, token);
+  try {
+    await SecureStore.setItemAsync(TOKEN_KEY, token);
+  } catch (error) {
+    console.error('Error saving token to secure store:', error);
+    throw error;
+  }
 }
 
 /** Retrieve JWT token from secure device storage */
 export async function getToken(): Promise<string | null> {
-  return await SecureStore.getItemAsync(TOKEN_KEY);
+  try {
+    return await SecureStore.getItemAsync(TOKEN_KEY);
+  } catch (error) {
+    console.error('Error retrieving token from secure store:', error);
+    return null;
+  }
 }
 
 /** Delete JWT token (used on logout or token expiry) */
 export async function deleteToken(): Promise<void> {
-  await SecureStore.deleteItemAsync(TOKEN_KEY);
+  try {
+    await SecureStore.deleteItemAsync(TOKEN_KEY);
+  } catch (error) {
+    console.error('Error deleting token from secure store:', error);
+  }
 }
 
 /** Check if user is logged in (has a stored token) */
@@ -66,15 +89,33 @@ api.interceptors.request.use(
   }
 );
 
-// --- Response interceptor: handle 401 (expired/invalid token) ---
+// --- Response interceptor: handle 401/403 (expired/invalid token, permission denied) ---
+// FIX: Added 403 handling for permission denied errors
+let isHandling401 = false; // Prevent multiple 401 handlers from running simultaneously
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status;
+    
+    if (status === 401 && !isHandling401) {
       // Token is expired or invalid — clear it
-      await deleteToken();
-      // The frontend should redirect to login screen when it detects no token
+      isHandling401 = true;
+      try {
+        await deleteToken();
+        console.warn('🔐 Token expired or invalid - cleared from storage');
+        // FIX: Immediately notify AuthGatekeeper to redirect
+        if (onAuthExpiredCallback) {
+          onAuthExpiredCallback();
+        }
+      } finally {
+        isHandling401 = false;
+      }
+    } else if (status === 403) {
+      // Permission denied - log but don't clear token
+      console.warn('🚫 Access denied (403):', error.response?.data?.message || 'Permission denied');
     }
+    
     return Promise.reject(error);
   }
 );

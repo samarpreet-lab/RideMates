@@ -20,6 +20,9 @@ export default function VehicleSection({
     vehicleType, setVehicleType, seats, setSeats, maxSeats,
     mileage, setMileage, fuelType, setFuelType
 }: VehicleSectionProps) {
+    const mileageNum = parseFloat(mileage) || 0;
+    const isMileageInvalid = mileage.length > 0 && (mileageNum < 5 || mileageNum > 100);
+
     return (
         <View style={s.sectionCard}>
             <View style={s.sectionHeader}>
@@ -78,18 +81,28 @@ export default function VehicleSection({
 
             {/* Mileage */}
             <Text style={s.fieldLabel}>VEHICLE MILEAGE (km/L)</Text>
-            <View style={s.inputRow}>
-                <MaterialIcons name="speed" size={18} color="#C24E00" />
+            <View style={[s.inputRow, isMileageInvalid && { borderColor: '#ef4444' }]}>
+                <MaterialIcons name="speed" size={18} color={isMileageInvalid ? '#ef4444' : '#C24E00'} />
                 <TextInput
                     style={s.textInput}
                     keyboardType="numeric"
                     value={mileage}
-                    onChangeText={setMileage}
+                    onChangeText={(text) => {
+                        // FIX: Only allow numeric input for mileage
+                        const clean = text.replace(/[^0-9.]/g, '');
+                        setMileage(clean);
+                    }}
                     placeholder="e.g. 15"
                     placeholderTextColor="#ccc"
                 />
                 <Text style={s.inputSuffix}>km/L</Text>
             </View>
+            {/* FIX: Show inline validation message for mileage */}
+            {isMileageInvalid && (
+                <Text style={{ fontSize: 12, color: '#ef4444', marginTop: 4, marginLeft: 4 }}>
+                    Mileage must be between 5 and 100 km/L
+                </Text>
+            )}
 
             {/* Fuel Type */}
             <Text style={s.fieldLabel}>FUEL TYPE</Text>

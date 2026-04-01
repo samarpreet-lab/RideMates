@@ -64,8 +64,11 @@ export default function MyRidesScreen() {
         setLoading(true);
         setErrorLine('');
         try {
+            // FIX: Wrap both API calls in catch to prevent Promise.all crash
             const [res, profileRes] = await Promise.all([
-                api.get('/rides/my'),
+                api.get('/rides/my').catch((err) => ({ 
+                    data: { success: false, message: err.response?.data?.message || 'Failed to load rides.' } 
+                })),
                 api.get('/auth/profile').catch(() => ({ data: { success: false, data: null } }))
             ]);
             
@@ -76,7 +79,8 @@ export default function MyRidesScreen() {
                 setErrorLine(res.data.message || 'Could not fetch rides.');
             }
 
-            if (profileRes.data && profileRes.data.success && profileRes.data.data) {
+            // FIX: Safer check for profile data (flagged_for_review may not exist)
+            if (profileRes.data?.success && profileRes.data?.data) {
                 setIsFlagged(!!profileRes.data.data.flagged_for_review);
             }
 
@@ -314,6 +318,18 @@ export default function MyRidesScreen() {
                     <MaterialIcons name="error-outline" size={48} color="#f87171" />
                     <Text style={s.emptyTitle}>Oops!</Text>
                     <Text style={s.emptySub}>{errorLine}</Text>
+                    {/* FIX: Add retry button on error state */}
+                    <TouchableOpacity
+                        style={{
+                            flexDirection: 'row', alignItems: 'center', backgroundColor: '#C24E00',
+                            paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8, marginTop: 16,
+                        }}
+                        onPress={fetchMyRides}
+                        activeOpacity={0.8}
+                    >
+                        <MaterialIcons name="refresh" size={18} color="#fff" />
+                        <Text style={{ color: '#fff', fontWeight: '600', marginLeft: 8 }}>Retry</Text>
+                    </TouchableOpacity>
                 </View>
             ) : (
                 <FlatList

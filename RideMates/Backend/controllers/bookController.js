@@ -40,6 +40,16 @@ async function bookSeat(req, res) {
     const seatsRequested = parseInt(seats_booked) || 1;
 
     // --- Validate inputs ---
+    // FIX: Validate seats is a positive integer within reasonable range
+    if (isNaN(seatsRequested) || seatsRequested < 1 || seatsRequested > 10) {
+      connection.release();
+      return res.status(400).json({
+        success: false,
+        message: 'Seats must be between 1 and 10.',
+        error: 'INVALID_SEATS',
+      });
+    }
+
     if (!ride_id) {
       connection.release();
       return res.status(400).json({
@@ -184,6 +194,8 @@ async function bookSeat(req, res) {
   } catch (error) {
     // If ANYTHING fails, undo all changes
     await connection.rollback();
+    // FIX: Release connection in catch block to prevent pool exhaustion
+    connection.release();
     console.error('Error in bookSeat:', error);
 
     // Handle duplicate booking (UNIQUE KEY on ride_id + passenger_id)
@@ -195,7 +207,7 @@ async function bookSeat(req, res) {
       });
     }
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Something went wrong. Please try again.',
       error: 'INTERNAL_ERROR',
@@ -261,20 +273,27 @@ async function getMyBookings(req, res) {
 //   ≤ 30 min                    → −5 Trust Points (like a no-show)
 // =============================================================================
 async function cancelBooking(req, res) {
+  // FIX: Use transaction to make cancellation atomic
+  const connection = await pool.getConnection();
+  
   try {
     const bookingId = req.params.id;
     const userId = req.user.id;
 
+    await connection.beginTransaction();
+
     // --- Fetch the booking + ride departure time ---
-    const [bookings] = await pool.query(
+    const [bookings] = await connection.query(
       `SELECT b.*, r.departure_time, r.id AS ride_id
        FROM bookings b
        JOIN rides r ON b.ride_id = r.id
-       WHERE b.id = ?`,
+       WHERE b.id = ? FOR UPDATE`,
       [bookingId]
     );
 
     if (bookings.length === 0) {
+      await connection.rollback();
+      connection.release();
       return res.status(404).json({
         success: false,
         message: 'Booking not found.',
@@ -286,6 +305,8 @@ async function cancelBooking(req, res) {
 
     // --- Only the passenger can cancel their own booking ---
     if (booking.passenger_id !== userId) {
+      await connection.rollback();
+      connection.release();
       return res.status(403).json({
         success: false,
         message: 'You can only cancel your own bookings.',
@@ -294,6 +315,8 @@ async function cancelBooking(req, res) {
     }
 
     if (booking.status !== 'confirmed' && booking.status !== 'pending') {
+      await connection.rollback();
+      connection.release();
       return res.status(400).json({
         success: false,
         message: 'This booking is already ' + booking.status + '.',
@@ -303,7 +326,9 @@ async function cancelBooking(req, res) {
 
     // Pending bookings can be withdrawn freely — no penalty, no seat to restore.
     if (booking.status === 'pending') {
-      await pool.query("UPDATE bookings SET status = 'cancelled' WHERE id = ?", [bookingId]);
+      await connection.query("UPDATE bookings SET status = 'cancelled' WHERE id = ?", [bookingId]);
+      await connection.commit();
+      connection.release();
       return res.status(200).json({
         success: true,
         message: 'Booking request withdrawn.',
@@ -320,7 +345,7 @@ async function cancelBooking(req, res) {
     // --- Apply the penalty if any ---
     if (penaltyResult.penalty > 0) {
       // Deduct trust points and reset streak
-      await pool.query(
+      await connection.query(
         `UPDATE users
          SET trust_score = GREATEST(trust_score - ?, 0),
              current_streak = 0
@@ -329,23 +354,26 @@ async function cancelBooking(req, res) {
       );
 
       // Record the penalty on the booking for audit trail
-      await pool.query(
+      await connection.query(
         'UPDATE bookings SET cancellation_penalty = ? WHERE id = ?',
         [penaltyResult.penalty, bookingId]
       );
     }
 
     // --- Cancel the booking ---
-    await pool.query(
+    await connection.query(
       "UPDATE bookings SET status = 'cancelled' WHERE id = ?",
       [bookingId]
     );
 
     // --- Restore the seats back to the ride ---
-    await pool.query(
+    await connection.query(
       'UPDATE rides SET available_seats = available_seats + ? WHERE id = ?',
       [booking.seats_booked, booking.ride_id]
     );
+
+    await connection.commit();
+    connection.release();
 
     res.status(200).json({
       success: true,
@@ -356,6 +384,8 @@ async function cancelBooking(req, res) {
       },
     });
   } catch (error) {
+    await connection.rollback();
+    connection.release();
     console.error('Error in cancelBooking:', error);
     res.status(500).json({
       success: false,

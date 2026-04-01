@@ -68,6 +68,8 @@ export default function PostRideScreen() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
+  // FIX: Add error state for retry capability
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Calculate tab bar height to add as bottom padding
   const tabBarHeight = sp(56) + (Platform.OS === 'android' ? Math.max(insets.bottom, sp(8)) : sp(8));
@@ -108,6 +110,7 @@ export default function PostRideScreen() {
 
   // --- Load user profile ---
   const loadProfile = async () => {
+    setLoadError(null);
     try {
       const res = await api.get('/auth/profile');
       setProfile(res.data.data);
@@ -115,6 +118,9 @@ export default function PostRideScreen() {
       if (error.response?.status === 401) {
         await deleteToken();
         router.replace('/(tabs)' as any);
+      } else {
+        // FIX: Set error state for retry UI
+        setLoadError(error.response?.data?.message || 'Could not load profile. Please check your connection.');
       }
     } finally {
       setLoading(false);
@@ -176,6 +182,8 @@ export default function PostRideScreen() {
     if (distanceKm <= 0) return false;
     if (driverPrice <= 0) return false;
     if (instantBooking && !instantAck) return false;
+    // FIX: Validate mileage is a reasonable number
+    if (mileageNum < 5 || mileageNum > 100) return false;
     return true;
   };
 
@@ -248,6 +256,33 @@ export default function PostRideScreen() {
 
   if (loading) {
     return <PostRideSkeleton />;
+  }
+
+  // FIX: Add error state UI with retry button
+  if (loadError) {
+    return (
+      <View style={[s.safeArea, { justifyContent: 'center', alignItems: 'center', padding: 24 }]}>
+        <StatusBar barStyle="dark-content" backgroundColor="#fff" translucent />
+        <MaterialIcons name="wifi-off" size={64} color="#ddd" />
+        <Text style={{ fontSize: 18, fontWeight: '600', color: '#333', marginTop: 16, textAlign: 'center' }}>
+          Connection Error
+        </Text>
+        <Text style={{ fontSize: 14, color: '#666', marginTop: 8, textAlign: 'center' }}>
+          {loadError}
+        </Text>
+        <TouchableOpacity
+          style={{
+            flexDirection: 'row', alignItems: 'center', backgroundColor: '#C24E00',
+            paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8, marginTop: 24,
+          }}
+          onPress={() => { setLoading(true); loadProfile(); }}
+          activeOpacity={0.8}
+        >
+          <MaterialIcons name="refresh" size={18} color="#fff" />
+          <Text style={{ color: '#fff', fontWeight: '600', marginLeft: 8 }}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
   }
 
   const isFemale = profile?.gender === 'female';
@@ -336,7 +371,7 @@ export default function PostRideScreen() {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
           style={s.scrollView}

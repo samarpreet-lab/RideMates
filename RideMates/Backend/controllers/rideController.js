@@ -56,6 +56,44 @@ async function createRide(req, res) {
       });
     }
 
+    // --- FIX: Prevent double-submit within 60 seconds ---
+    const [recentRides] = await pool.query(
+      `SELECT id FROM rides 
+       WHERE driver_id = ? 
+         AND origin_city = ? 
+         AND destination_city = ? 
+         AND ABS(TIMESTAMPDIFF(SECOND, departure_time, ?)) < 60
+         AND created_at > DATE_SUB(NOW(), INTERVAL 60 SECOND)
+       LIMIT 1`,
+      [driver_id, origin_city, destination_city, departure_time]
+    );
+    if (recentRides.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: 'A similar ride was just posted. Please wait before posting again.',
+        error: 'DUPLICATE_RIDE',
+      });
+    }
+
+    // --- FIX: Validate numeric inputs ---
+    const seatsNum = parseInt(available_seats);
+    if (isNaN(seatsNum) || seatsNum < 1 || seatsNum > 10) {
+      return res.status(400).json({
+        success: false,
+        message: 'Available seats must be between 1 and 10.',
+        error: 'INVALID_SEATS',
+      });
+    }
+
+    const priceNum = parseFloat(driver_set_price);
+    if (isNaN(priceNum) || priceNum < 1 || priceNum > 10000) {
+      return res.status(400).json({
+        success: false,
+        message: 'Price must be between ₹1 and ₹10,000.',
+        error: 'INVALID_PRICE',
+      });
+    }
+
     // --- Validate coordinates ---
     if (!origin_lat || !origin_lng || !dest_lat || !dest_lng) {
       return res.status(400).json({
@@ -65,12 +103,46 @@ async function createRide(req, res) {
       });
     }
 
+    // FIX: Validate coordinate ranges
+    const validateCoord = (val, min, max, name) => {
+      const num = parseFloat(val);
+      if (isNaN(num) || num < min || num > max) {
+        return { valid: false, error: `${name} must be between ${min} and ${max}` };
+      }
+      return { valid: true, value: num };
+    };
+
+    const oLat = validateCoord(origin_lat, -90, 90, 'Origin latitude');
+    const oLng = validateCoord(origin_lng, -180, 180, 'Origin longitude');
+    const dLat = validateCoord(dest_lat, -90, 90, 'Destination latitude');
+    const dLng = validateCoord(dest_lng, -180, 180, 'Destination longitude');
+
+    if (!oLat.valid || !oLng.valid || !dLat.valid || !dLng.valid) {
+      const errorMsg = [oLat, oLng, dLat, dLng].find(c => !c.valid)?.error;
+      return res.status(400).json({
+        success: false,
+        message: errorMsg || 'Invalid coordinates.',
+        error: 'INVALID_COORDINATES',
+      });
+    }
+
     // --- Backend OSRM Integration (Security: never trust frontend distance) ---
     // OSRM expects longitude,latitude order.
     let distance_km;
     try {
-      const osrmUrl = `http://router.project-osrm.org/route/v1/driving/${origin_lng},${origin_lat};${dest_lng},${dest_lat}?overview=false`;
+      const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${oLng.value},${oLat.value};${dLng.value},${dLat.value}?overview=false`;
       const osrmRes = await fetch(osrmUrl, { signal: AbortSignal.timeout(10000) });
+      
+      // FIX: Check HTTP status before parsing JSON
+      if (!osrmRes.ok) {
+        console.error('OSRM API error:', osrmRes.status);
+        return res.status(503).json({
+          success: false,
+          message: 'Route calculation service temporarily unavailable.',
+          error: 'OSRM_UNAVAILABLE',
+        });
+      }
+      
       const osrmData = await osrmRes.json();
 
       if (!osrmData.routes || osrmData.routes.length === 0) {
@@ -336,17 +408,24 @@ async function getRideById(req, res) {
 // SRS: Section 6.2 — PUT /api/rides/:id (driver only, 403 otherwise)
 // =============================================================================
 async function updateRide(req, res) {
+  // FIX: Use transaction to make ride update atomic (QA Issue #14)
+  const connection = await pool.getConnection();
+
   try {
     const rideId = req.params.id;
     const userId = req.user.id;
 
-    // --- Check that the ride exists and belongs to this driver ---
-    const [rides] = await pool.query(
-      'SELECT driver_id, status FROM rides WHERE id = ?',
+    await connection.beginTransaction();
+
+    // --- Check that the ride exists and belongs to this driver (with lock) ---
+    const [rides] = await connection.query(
+      'SELECT driver_id, status FROM rides WHERE id = ? FOR UPDATE',
       [rideId]
     );
 
     if (rides.length === 0) {
+      await connection.rollback();
+      connection.release();
       return res.status(404).json({
         success: false,
         message: 'This ride is no longer available.',
@@ -355,6 +434,8 @@ async function updateRide(req, res) {
     }
 
     if (rides[0].driver_id !== userId) {
+      await connection.rollback();
+      connection.release();
       return res.status(403).json({
         success: false,
         message: 'You can only edit your own rides.',
@@ -363,6 +444,8 @@ async function updateRide(req, res) {
     }
 
     if (rides[0].status !== 'active') {
+      await connection.rollback();
+      connection.release();
       return res.status(400).json({
         success: false,
         message: 'Only active rides can be updated.',
@@ -377,11 +460,13 @@ async function updateRide(req, res) {
 
     if (departure_time) {
       // --- Lock: cannot change departure time if passengers have already booked ---
-      const [[{ bookings }]] = await pool.query(
+      const [[{ bookings }]] = await connection.query(
         'SELECT COUNT(*) AS bookings FROM bookings WHERE ride_id = ? AND status = ?',
         [rideId, 'confirmed']
       );
       if (bookings > 0) {
+        await connection.rollback();
+        connection.release();
         return res.status(400).json({
           success: false,
           message: 'You cannot change the departure time because passengers have already booked. Please cancel and repost the ride.',
@@ -397,13 +482,12 @@ async function updateRide(req, res) {
     }
     if (driver_set_price !== undefined) {
       // --- Re-run pricing algorithm when price changes (SRS FR-RIDE-02/03) ---
-      // We need the ride's distance, mileage, fuel_type, and vehicle_type to recalculate
-      const [rideDetails] = await pool.query(
+      const [rideDetails] = await connection.query(
         'SELECT distance_km, vehicle_mileage, fuel_type, vehicle_type, available_seats FROM rides WHERE id = ?',
         [rideId]
       );
       const rd = rideDetails[0];
-      const [fuelRows] = await pool.query(
+      const [fuelRows] = await connection.query(
         'SELECT rate_per_litre FROM fuel_rates WHERE fuel_type = ?',
         [rd.fuel_type]
       );
@@ -435,6 +519,8 @@ async function updateRide(req, res) {
     }
 
     if (updates.length === 0) {
+      await connection.rollback();
+      connection.release();
       return res.status(400).json({
         success: false,
         message: 'No fields provided to update.',
@@ -443,19 +529,24 @@ async function updateRide(req, res) {
     }
 
     values.push(rideId);
-    await pool.query(`UPDATE rides SET ${updates.join(', ')} WHERE id = ?`, values);
+    await connection.query(`UPDATE rides SET ${updates.join(', ')} WHERE id = ?`, values);
+
+    await connection.commit();
 
     res.status(200).json({
       success: true,
       message: 'Ride updated successfully.',
     });
   } catch (error) {
+    await connection.rollback();
     console.error('Error in updateRide:', error);
     res.status(500).json({
       success: false,
       message: 'Something went wrong. Please try again.',
       error: 'INTERNAL_ERROR',
     });
+  } finally {
+    connection.release();
   }
 }
 

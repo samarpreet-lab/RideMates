@@ -42,6 +42,12 @@ export default function OtpStep({
   onVerify,
   verifyButtonText,
 }: OtpStepProps) {
+  // FIX: Only allow numeric input and enforce 6-digit max
+  const handleOtpChange = (text: string) => {
+    const cleanText = text.replace(/[^0-9]/g, '').slice(0, 6);
+    setOtp(cleanText);
+  };
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
@@ -63,7 +69,7 @@ export default function OtpStep({
             placeholder="000000"
             placeholderTextColor="#ccc"
             value={otp}
-            onChangeText={setOtp}
+            onChangeText={handleOtpChange}
             keyboardType="number-pad"
             maxLength={6}
             editable={!loading}

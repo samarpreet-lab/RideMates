@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Environment files (CRITICAL: Never commit these!)
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Keep example file for reference
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Test coverage
+coverage/

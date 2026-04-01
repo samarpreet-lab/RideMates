@@ -24,7 +24,8 @@ export default function GenderPicker({ gender, setGender, loading }: GenderPicke
   return (
     <View style={s.inputGroup}>
       <View style={s.labelRow}>
-        <Text style={s.label}>Gender</Text>
+        <Text style={s.label}>Gender <Text style={{ color: '#C24E00' }}>*</Text></Text>
+        <Text style={{ fontSize: 11, color: '#999', fontStyle: 'italic' }}>Required for safety features</Text>
       </View>
       <View style={s.genderContainer}>
         {GENDERS.map(({ id, label }) => (

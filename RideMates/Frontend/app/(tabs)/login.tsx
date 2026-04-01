@@ -131,7 +131,7 @@ export default function LoginScreen() {
   return (
     <SafeAreaView style={s.safeContainer}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
       >
         <ScrollView
@@ -160,10 +160,11 @@ export default function LoginScreen() {
               />
             )}
 
+            {/* FIX: Navigate to index (signup screen), not tabs root */}
             <AuthFooterLink
               text="Don't have an account? "
               linkText="Sign up here"
-              onPress={() => router.push('/(tabs)')}
+              onPress={() => router.push('/(tabs)/index' as any)}
               loading={loading}
             />
           </View>

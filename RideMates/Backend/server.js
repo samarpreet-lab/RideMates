@@ -32,7 +32,18 @@ const app = express();
 // --- Middleware ---
 // cors()          → allows the React Native app to call this API from a different origin
 // express.json()  → parses incoming JSON request bodies so req.body works
-app.use(cors());
+
+// FIX: Restrict CORS to specific origins instead of allowing all
+const corsOptions = {
+  origin: process.env.CORS_ORIGINS 
+    ? process.env.CORS_ORIGINS.split(',') 
+    : ['http://localhost:3000', 'http://localhost:8081', 'exp://'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  maxAge: 86400, // 24 hours
+};
+app.use(cors(corsOptions));
 app.use(express.json());
 app.set('trust proxy', true); // Required for Render to properly identify client IP via X-Forwarded-For
 
@@ -251,14 +262,23 @@ async function awardCleanRideStreaks() {
   }
 }
 
+// FIX: Wrap scheduled jobs in error handler to prevent silent failures
+const safeRunJob = async (jobFn, jobName) => {
+  try {
+    await jobFn();
+  } catch (error) {
+    console.error(`❌ Job ${jobName} failed:`, error.message);
+  }
+};
+
 // --- Start both scheduled jobs (runs every 30 minutes) ---
-setInterval(autoCompleteStaleRides, THIRTY_MINUTES);
-setInterval(awardCleanRideStreaks, THIRTY_MINUTES);
+setInterval(() => safeRunJob(autoCompleteStaleRides, 'autoCompleteStaleRides'), THIRTY_MINUTES);
+setInterval(() => safeRunJob(awardCleanRideStreaks, 'awardCleanRideStreaks'), THIRTY_MINUTES);
 
 // Also run once at startup (after a short delay to let DB connect)
 setTimeout(() => {
-  autoCompleteStaleRides();
-  awardCleanRideStreaks();
+  safeRunJob(autoCompleteStaleRides, 'autoCompleteStaleRides');
+  safeRunJob(awardCleanRideStreaks, 'awardCleanRideStreaks');
 }, 5000);
 
 

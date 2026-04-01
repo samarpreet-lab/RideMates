@@ -1,16 +1,20 @@
 // Frontend/services/firebase.ts
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
+import Constants from 'expo-constants';
 
+// FIX: Load Firebase config from environment variables (set in app.config.js or .env)
+// For Expo, use expo-constants to access extra config
 const firebaseConfig = {
-  apiKey: "AIzaSyDTXW8MvIb-DYc24j1aldJM8cyCFA3sfXI",
-  authDomain: "ridemates-e865c.firebaseapp.com",
-  projectId: "ridemates-e865c",
-  storageBucket: "ridemates-e865c.firebasestorage.app",
-  messagingSenderId: "632957917795",
-  appId: "1:632957917795:web:e6389bb6e90195f9707656"
+  apiKey: Constants.expoConfig?.extra?.firebaseApiKey || process.env.EXPO_PUBLIC_FIREBASE_API_KEY || '',
+  authDomain: Constants.expoConfig?.extra?.firebaseAuthDomain || process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || '',
+  projectId: Constants.expoConfig?.extra?.firebaseProjectId || process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || '',
+  storageBucket: Constants.expoConfig?.extra?.firebaseStorageBucket || process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || '',
+  messagingSenderId: Constants.expoConfig?.extra?.firebaseMessagingSenderId || process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '',
+  appId: Constants.expoConfig?.extra?.firebaseAppId || process.env.EXPO_PUBLIC_FIREBASE_APP_ID || '',
 };
-console.log("🔥 THE APP IS CURRENTLY USING THIS API KEY: ", firebaseConfig.apiKey);
+
+// FIX: Removed console.log that exposed API key
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);

@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import api, { deleteToken } from '../../services/api';
@@ -42,6 +42,8 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  // FIX: Add error state for retry capability
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Calculate tab bar height to offset bottom sheet
   const tabBarHeight = sp(56) + (Platform.OS === 'android' ? Math.max(insets.bottom, sp(8)) : sp(8));
@@ -57,6 +59,8 @@ export default function HomeScreen() {
   // Search results state
   const [searchResults, setSearchResults] = useState<Ride[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  // FIX: Track search errors for retry
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [searchView, setSearchView] = useState<'form' | 'results'>('form');
 
   // Location picker state
@@ -72,6 +76,7 @@ export default function HomeScreen() {
   const [sheetExpanded, setSheetExpanded] = useState(false);
 
   const loadData = async () => {
+    setLoadError(null);
     try {
       console.log('📱 Loading user profile...');
       const res = await api.get('/auth/profile');
@@ -83,9 +88,9 @@ export default function HomeScreen() {
         await deleteToken();
         router.replace('/(tabs)' as any);
       } else {
-        // For other errors (network, server), set profile to null but don't redirect
-        // This allows the UI to show "Hello there" fallback
+        // FIX: Set error state for retry UI
         setProfile(null);
+        setLoadError(error.response?.data?.message || 'Could not load profile. Please check your connection.');
       }
     } finally {
       setLoading(false);
@@ -145,6 +150,7 @@ export default function HomeScreen() {
     }
 
     setSearchLoading(true);
+    setSearchError(null);
     try {
       const params: Record<string, string> = {
         origin: origin.trim(),
@@ -165,10 +171,12 @@ export default function HomeScreen() {
         setSearchResults(filtered);
         setSearchView('results');
       } else {
+        setSearchError(res.data.message || 'Search failed. Please try again.');
         showAlert({ type: 'error', title: 'Search failed', message: res.data.message || 'Please try again.' });
       }
     } catch (error: any) {
       const msg = error.response?.data?.message || 'Network error. Please check your connection.';
+      setSearchError(msg);
       showAlert({ type: 'error', title: 'Search Error', message: msg });
     } finally {
       setSearchLoading(false);
@@ -193,6 +201,33 @@ export default function HomeScreen() {
   // -- Loading state ---------------------------------------------------------
   if (loading) {
     return <ExploreSkeleton />;
+  }
+
+  // FIX: Add error state UI with retry button
+  if (loadError) {
+    return (
+      <View style={[s.root, { justifyContent: 'center', alignItems: 'center', padding: 24 }]}>
+        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+        <MaterialIcons name="wifi-off" size={64} color="#ddd" />
+        <Text style={{ fontSize: 18, fontWeight: '600', color: '#333', marginTop: 16, textAlign: 'center' }}>
+          Connection Error
+        </Text>
+        <Text style={{ fontSize: 14, color: '#666', marginTop: 8, textAlign: 'center' }}>
+          {loadError}
+        </Text>
+        <TouchableOpacity
+          style={{
+            flexDirection: 'row', alignItems: 'center', backgroundColor: '#C24E00',
+            paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8, marginTop: 24,
+          }}
+          onPress={() => { setLoading(true); loadData(); }}
+          activeOpacity={0.8}
+        >
+          <MaterialIcons name="refresh" size={18} color="#fff" />
+          <Text style={{ color: '#fff', fontWeight: '600', marginLeft: 8 }}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
   }
 
   const isFaculty = profile?.role === 'faculty';
@@ -270,9 +305,9 @@ export default function HomeScreen() {
       {/* -- Full-Screen Map ---------------------------------------------- */}
       <MapView
         style={StyleSheet.absoluteFill}
-        provider={PROVIDER_DEFAULT}
+        provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
         initialRegion={LPU_REGION}
-        showsUserLocation
+        showsUserLocation={false}
         showsMyLocationButton={false}
         showsCompass={false}
         mapType="standard"

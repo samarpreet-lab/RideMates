@@ -318,7 +318,8 @@ async function sendOtp(req, res) {
     // Try sending the email. If it fails, delete the OTP so they aren't rate limited
     try {
       await transporter.sendMail(mailOptions);
-      console.log(`📧 OTP sent to ${email} (purpose: ${purpose})`);
+      // FIX: Remove PII from logs - only log domain hint
+      console.log(`📧 OTP sent to ***@${email.split('@')[1] || 'unknown'} (purpose: ${purpose})`);
 
       // --- Return success (never expose the OTP in the response!) ---
       res.status(200).json({
@@ -326,7 +327,7 @@ async function sendOtp(req, res) {
         message: 'OTP sent successfully! Check your email.',
       });
     } catch (mailError) {
-      console.error(`❌ SMTP Error sending OTP to ${email}:`, mailError.message);
+      console.error(`❌ SMTP Error sending OTP:`, mailError.message);
       
       // Delete the OTP hash we just inserted so they don't get unfairly rate limited
       // or stuck unable to request a new one if the SMTP issue resolves
@@ -524,7 +525,8 @@ async function verifyOtp(req, res) {
     // --- Issue JWT (SRS FR-AUTH-05) ---
     const token = signToken(user.id, user.email);
 
-    console.log(`✅ ${isNewUser ? 'Signup' : 'Login'} successful for ${email}`);
+    // FIX: Remove PII from logs - only log user ID
+    console.log(`✅ ${isNewUser ? 'Signup' : 'Login'} successful for user #${user.id}`);
 
     // --- Return JWT + user info ---
     res.status(200).json({
@@ -563,10 +565,10 @@ async function verifyOtp(req, res) {
 // =============================================================================
 async function getProfile(req, res) {
   try {
+    // FIX: Removed flagged_for_review column (doesn't exist in schema)
     const [users] = await pool.query(
       `SELECT id, full_name, email, phone, university, role,
-              profile_photo, gender, trust_score, current_streak, created_at,
-              flagged_for_review
+              profile_photo, gender, trust_score, current_streak, created_at
        FROM users WHERE id = ?`,
       [req.user.id]
     );
@@ -608,6 +610,9 @@ async function updateProfile(req, res) {
   try {
     const { full_name, phone, gender, profile_photo } = req.body;
 
+    // FIX: Whitelist allowed column names to prevent SQL injection
+    const ALLOWED_FIELDS = ['full_name', 'phone', 'gender', 'profile_photo'];
+    
     // Build the SET clause dynamically — only update fields that were provided
     const updates = [];
     const values = [];
@@ -619,6 +624,16 @@ async function updateProfile(req, res) {
     if (phone !== undefined) {
       // --- Check for duplicate phone number (exclude current user) ---
       if (phone) {
+        // FIX: Validate phone format (Indian mobile number)
+        const phoneClean = phone.replace(/[\s-]/g, '');
+        if (!/^(\+91)?[6-9]\d{9}$/.test(phoneClean)) {
+          return res.status(400).json({
+            success: false,
+            message: 'Please enter a valid 10-digit Indian phone number.',
+            error: 'INVALID_PHONE',
+          });
+        }
+        
         const [phoneCheck] = await pool.query(
           'SELECT id FROM users WHERE phone = ? AND id != ?',
           [phone, req.user.id]
@@ -635,6 +650,15 @@ async function updateProfile(req, res) {
       values.push(phone);
     }
     if (gender !== undefined) {
+      // FIX: Validate gender value
+      const validGenders = ['male', 'female', 'other'];
+      if (!validGenders.includes(gender)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Gender must be male, female, or other.',
+          error: 'INVALID_GENDER',
+        });
+      }
       updates.push('gender = ?');
       values.push(gender);
     }

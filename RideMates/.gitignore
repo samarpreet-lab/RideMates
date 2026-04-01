@@ -1,1 +1,24 @@
-# local backups\n.git_backups/
+# local backups
+.git_backups/
+
+# Environment files (CRITICAL: Never commit secrets!)
+.env
+.env.local
+.env.production
+.env.*.local
+*.env
+
+# Dependencies
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*

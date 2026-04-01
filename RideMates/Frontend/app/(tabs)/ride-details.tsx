@@ -64,13 +64,23 @@ export default function RideDetailsScreen() {
 
     // ─── Fetch fresh ride data & profile on mount ────────────────────────────
     const fetchRide = async () => {
+        // FIX: Validate rideId exists before fetching
+        if (!rideId) {
+            setErrorMsg('Ride ID is missing. Please go back and try again.');
+            setState('error');
+            return;
+        }
+        
         setState('loading');
         setErrorMsg('');
         // reset any previous booking result (important when revisiting same ride)
         setBooking(null);
         try {
+            // FIX: Wrap both API calls in catch to prevent Promise.all crash
             const [res, profileRes] = await Promise.all([
-                api.get(`/rides/${rideId}`),
+                api.get(`/rides/${rideId}`).catch((err) => ({ 
+                    data: { success: false, message: err.response?.data?.message || 'Failed to load ride.' } 
+                })),
                 api.get('/auth/profile').catch(() => ({ data: { success: false, data: null } }))
             ]);
 
@@ -78,8 +88,17 @@ export default function RideDetailsScreen() {
                 setRide(res.data.data);
                 setMyBooking(res.data.data.my_booking || null);
                 
-                if (profileRes.data && profileRes.data.success) {
+                // FIX: Add null guard for profile data
+                if (profileRes.data?.success && profileRes.data?.data) {
                     setProfile(profileRes.data.data);
+                } else {
+                    // Provide safe fallback profile to prevent crashes
+                    setProfile({
+                        id: null,
+                        trust_score: 100,
+                        full_name: 'User',
+                        gender: 'other',
+                    });
                 }
 
                 setState('detail');

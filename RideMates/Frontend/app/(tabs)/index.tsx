@@ -51,16 +51,31 @@ export default function SignupScreen() {
   }, [timer]);
 
   const validateEmail = () => {
-    if (!fullName.trim()) {
+    // FIX: Validate full name format (first + last name, min length)
+    const trimmedName = fullName.trim();
+    if (!trimmedName) {
       showAlert({ type: 'error', title: 'Error', message: 'Please enter your full name' });
       return false;
     }
+    const nameParts = trimmedName.split(/\s+/);
+    if (nameParts.length < 2) {
+      showAlert({ type: 'error', title: 'Invalid Name', message: 'Please enter both first and last name' });
+      return false;
+    }
+    if (nameParts.some(part => part.length < 2)) {
+      showAlert({ type: 'error', title: 'Invalid Name', message: 'Each name part should be at least 2 characters' });
+      return false;
+    }
+    
     if (!email.trim()) {
       showAlert({ type: 'error', title: 'Error', message: 'Please enter your email' });
       return false;
     }
-    if (!email.endsWith('@lpu.in')) {
-      showAlert({ type: 'warning', title: 'Access Denied', message: 'Only @lpu.in email addresses are allowed.' });
+    
+    // FIX: Validate email format before checking domain
+    const emailRegex = /^[a-zA-Z0-9._-]+@lpu\.in$/;
+    if (!emailRegex.test(email.trim().toLowerCase())) {
+      showAlert({ type: 'warning', title: 'Invalid Email', message: 'Please enter a valid LPU email (e.g., john.doe@lpu.in)' });
       return false;
     }
     return true;
@@ -143,14 +158,37 @@ export default function SignupScreen() {
   };
 
   const handleCompleteProfile = async () => {
-    if (!phone.trim()) {
+    // FIX: Validate phone format (Indian mobile number)
+    const phoneClean = phone.trim().replace(/[\s-]/g, '');
+    if (!phoneClean) {
       showAlert({ type: 'error', title: 'Error', message: 'Please enter your phone number' });
       return;
     }
-
+    const phoneRegex = /^(\+91)?[6-9]\d{9}$/;
+    if (!phoneRegex.test(phoneClean)) {
+      showAlert({ type: 'error', title: 'Invalid Phone', message: 'Please enter a valid 10-digit Indian phone number' });
+      return;
+    }
+    
+    // FIX: Validate gender is explicitly selected
+    if (gender === 'other') {
+      showAlert({ 
+        type: 'confirm', 
+        title: 'Confirm Gender', 
+        message: 'You selected "Other" as your gender. Is this correct?',
+        onConfirm: () => completeProfileRequest(),
+        onCancel: () => {}
+      });
+      return;
+    }
+    
+    await completeProfileRequest();
+  };
+  
+  const completeProfileRequest = async () => {
     setLoading(true);
     try {
-      await api.put('/auth/profile', { phone, gender });
+      await api.put('/auth/profile', { phone: phone.trim(), gender });
 
       showAlert({ type: 'success', title: 'Welcome!', message: 'Profile completed! Welcome to RideMates!' });
 
@@ -171,7 +209,7 @@ export default function SignupScreen() {
   return (
     <SafeAreaView style={s.safeContainer}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
       >
         <ScrollView
