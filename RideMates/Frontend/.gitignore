@@ -3,6 +3,15 @@
 # dependencies
 node_modules/
 
+# Environment files (CRITICAL: Never commit these!)
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Keep example file for reference
+!.env.example
+
 # Expo
 .expo/
 dist/
