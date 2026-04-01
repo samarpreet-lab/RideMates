@@ -34,6 +34,7 @@ const app = express();
 // express.json()  → parses incoming JSON request bodies so req.body works
 app.use(cors());
 app.use(express.json());
+app.set('trust proxy', true); // Required for Render to properly identify client IP via X-Forwarded-For
 
 
 // =============================================================================

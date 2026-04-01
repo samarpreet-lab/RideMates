@@ -47,13 +47,19 @@ const MAX_OTP_ATTEMPTS = 3; // SRS FR-AUTH-10: lock after 3 failed attempts
 
 
 // --- SMTP Transporter (Nodemailer) ---
-// Configured via environment variables. Uses Gmail by default.
+// Use explicit host/port instead of service preset for better control over IPv4/IPv6
 const transporter = nodemailer.createTransport({
-  service: process.env.SMTP_SERVICE || 'gmail',
+  host: 'smtp.gmail.com',
+  port: 587, // TLS port
+  secure: false, // use STARTTLS (not SSL on 465)
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
+  // Force IPv4 and increase timeouts - fixes Render's IPv6 SMTP timeout issue
+  family: 4,
+  connectionTimeout: 10000,
+  socketTimeout: 10000,
 });
 
 // Verify SMTP connection at startup
