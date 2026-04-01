@@ -29,6 +29,17 @@ if (!process.env.JWT_SECRET) {
   process.exit(1);
 }
 const JWT_SECRET = process.env.JWT_SECRET;
+
+// Validate SMTP configuration for OTP emails
+if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+  console.error('\n❌ FATAL: SMTP credentials not configured!');
+  console.error('   Required environment variables:');
+  console.error('   - SMTP_SERVICE (default: gmail)');
+  console.error('   - SMTP_USER (e.g., your-email@gmail.com)');
+  console.error('   - SMTP_PASS (Gmail app password, not regular password)\n');
+  process.exit(1);
+}
+
 const JWT_EXPIRES_IN = '7d'; // SRS FR-AUTH-05: 7-day JWT expiry
 const OTP_EXPIRY_MINUTES = 10; // SRS FR-AUTH-08: OTP valid for 10 minutes
 const MAX_OTP_REQUESTS = 3; // SRS FR-AUTH-09: max 3 requests per 10 min
@@ -43,6 +54,16 @@ const transporter = nodemailer.createTransport({
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
+});
+
+// Verify SMTP connection at startup
+transporter.verify((error, success) => {
+  if (error) {
+    console.error('❌ SMTP Verification Failed:', error.message);
+    console.error('   Email sending will fail. Check SMTP credentials in .env');
+  } else {
+    console.log('✅ SMTP transporter configured and working');
+  }
 });
 
 
