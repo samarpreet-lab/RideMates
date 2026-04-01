@@ -45,7 +45,7 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 app.use(express.json());
-app.set('trust proxy', true); // Required for Render to properly identify client IP via X-Forwarded-For
+app.set('trust proxy', 1); // Trust only 1 proxy (Render). This allows rate limiting to work securely with proper client IP detection
 
 
 // =============================================================================

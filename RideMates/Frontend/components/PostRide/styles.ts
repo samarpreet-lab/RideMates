@@ -232,15 +232,17 @@ export const s = StyleSheet.create({
     publishBarWrap: {
         backgroundColor: '#fff', paddingHorizontal: wp(16), paddingVertical: hp(12),
         paddingBottom: Platform.OS === 'ios' ? hp(34) : hp(16),
+        borderRadius: sp(20),
         borderTopWidth: 1, borderTopColor: '#EAE0D8',
         elevation: 12, shadowColor: '#000',
         shadowOpacity: 0.1, shadowRadius: sp(8), shadowOffset: { width: 0, height: -4 },
     },
     publishBtn: {
-        backgroundColor: '#C24E00', borderRadius: sp(16), height: sp(54),
+        backgroundColor: '#C24E00', borderRadius: sp(27), height: sp(54),
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: sp(8),
         elevation: 4, shadowColor: '#C24E00',
         shadowOpacity: 0.35, shadowRadius: sp(8), shadowOffset: { width: 0, height: 4 },
+        overflow: 'hidden',
     },
     publishBtnDisabled: { backgroundColor: '#EAE0D8', elevation: 0, shadowOpacity: 0 },
     publishBtnText: { fontSize: fs(16), fontWeight: '800', color: '#fff' },

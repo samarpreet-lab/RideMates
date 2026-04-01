@@ -111,9 +111,9 @@ export async function searchLocations(query: string): Promise<LocationResult[]> 
       q: query.trim(),
       format: 'json',
       limit: '10',
-      // Bias toward LPU location
-      viewbox: `${BIAS_LON - 0.5},${BIAS_LAT + 0.5},${BIAS_LON + 0.5},${BIAS_LAT - 0.5}`,
-      bounded: '1', // Only return results within viewbox
+      // Bias toward Punjab region but don't strictly bound
+      viewbox: `${PUNJAB_BOUNDS.minLng},${PUNJAB_BOUNDS.maxLat},${PUNJAB_BOUNDS.maxLng},${PUNJAB_BOUNDS.minLat}`,
+      // Remove bounded to allow results outside viewbox, viewbox acts as bias only
       dedupe: '1', // Remove duplicate results
       countrycodes: 'in', // India only
       accept_language: 'en',
@@ -144,18 +144,11 @@ export async function searchLocations(query: string): Promise<LocationResult[]> 
     // Filter results
     const results: LocationResult[] = data
       .filter((result) => {
-        // Filter to relevant types (cities, towns, villages, districts)
-        const validTypes = ['city', 'town', 'village', 'district', 'administrative'];
-        const isValidType = validTypes.some(
-          (t) => result.type?.toLowerCase().includes(t)
-        );
-
-        if (!isValidType) return false;
-
-        // Filter to Punjab region
+        // Less strict filtering - include more result types
         const lat = parseFloat(result.lat);
         const lng = parseFloat(result.lon);
 
+        // Still filter to Punjab region for relevance
         if (!isInPunjabRegion(lat, lng)) {
           console.log(`Filtered out: ${result.name} (outside Punjab)`);
           return false;

@@ -115,7 +115,18 @@ export default function RideDetailsScreen() {
     };
 
     useEffect(() => {
-        if (rideId) fetchRide();
+        // Reset all state when rideId changes
+        setRide(null);
+        setBooking(null);
+        setMyBooking(null);
+        setSeatsSelected(1);
+        setState('loading');
+        setErrorMsg('');
+        setStatusModal(null);
+        
+        if (rideId) {
+            fetchRide();
+        }
     }, [rideId]);
 
     // ─── Handle booking ────────────────────────────────────────────────────
@@ -322,6 +333,20 @@ export default function RideDetailsScreen() {
 
             {/* Scrollable Content */}
             <ScrollView contentContainerStyle={ds.scrollContent}>
+                {/* Show cancelled ride banner */}
+                {ride.status === 'cancelled' && (
+                    <View style={{ backgroundColor: '#ffe5e5', borderRadius: 12, padding: 12, marginBottom: 16, borderLeftWidth: 4, borderLeftColor: '#ef4444' }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#C24E00' }}>⚠️ This ride has been cancelled</Text>
+                        <Text style={{ fontSize: 12, color: '#6B5344', marginTop: 4 }}>This ride is no longer available. Go back to find other rides.</Text>
+                        <TouchableOpacity 
+                            onPress={goBack}
+                            style={{ marginTop: 8, paddingVertical: 6, backgroundColor: '#fff', borderRadius: 6, alignItems: 'center' }}
+                        >
+                            <Text style={{ color: '#C24E00', fontWeight: '600', fontSize: 12 }}>← Go Back</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+                
                 <DriverInfoCard ride={ride} />
                 <RouteTimeline ride={ride} />
                 <RideBadges ride={ride} />

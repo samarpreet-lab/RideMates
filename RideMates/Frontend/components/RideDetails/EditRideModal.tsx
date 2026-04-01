@@ -24,8 +24,20 @@ interface EditRideModalProps {
 export default function EditRideModal({ visible, ride, onClose, onSave, onSaveSuccess }: EditRideModalProps) {
     const [loading, setLoading] = useState(false);
 
-    const [departureDate, setDepartureDate] = useState(new Date(ride.departure_time));
-    const [departureTime, setDepartureTime] = useState(new Date(ride.departure_time));
+    // Parse departure time safely
+    const parseDate = (dateStr: string | Date | undefined): Date => {
+        if (!dateStr) return new Date();
+        try {
+            const parsed = new Date(dateStr);
+            // Check if date is valid
+            return isNaN(parsed.getTime()) ? new Date() : parsed;
+        } catch {
+            return new Date();
+        }
+    };
+
+    const [departureDate, setDepartureDate] = useState<Date>(() => parseDate(ride.departure_time));
+    const [departureTime, setDepartureTime] = useState<Date>(() => parseDate(ride.departure_time));
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [showTimePicker, setShowTimePicker] = useState(false);
 
@@ -35,11 +47,12 @@ export default function EditRideModal({ visible, ride, onClose, onSave, onSaveSu
     const [isWomenOnly, setIsWomenOnly] = useState(!!ride.is_women_only);
 
     useEffect(() => {
-        if (visible) {
-            setDepartureDate(new Date(ride.departure_time));
-            setDepartureTime(new Date(ride.departure_time));
-            setSeats(ride.available_seats);
-            setPrice(String(ride.capped_price));
+        if (visible && ride) {
+            const parsedDate = parseDate(ride.departure_time);
+            setDepartureDate(new Date(parsedDate));
+            setDepartureTime(new Date(parsedDate));
+            setSeats(ride.available_seats ?? 3);
+            setPrice(String(ride.capped_price ?? '0'));
             setIsEmergency(!!ride.is_emergency_route);
             setIsWomenOnly(!!ride.is_women_only);
         }

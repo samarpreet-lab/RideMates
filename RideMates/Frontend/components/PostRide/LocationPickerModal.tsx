@@ -10,7 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { s } from './styles';
 import { ALL_HUBS, HUB_COORDS } from './constants';
-import usePhotonSearch from '../../hooks/usePhotonSearch';
+import useLocationIQSearch from '../../hooks/useLocationIQSearch';
 
 interface LocationPickerModalProps {
     locPickerTarget: 'origin' | 'destination' | null;
@@ -24,15 +24,11 @@ export default function LocationPickerModal({
     locPickerTarget, setLocPickerTarget, locQuery, setLocQuery, applyLocSelection
 }: LocationPickerModalProps) {
 
-    const filteredHubs = locQuery.trim().length > 0
-        ? ALL_HUBS.filter((h) =>
-            h.label.toLowerCase().includes(locQuery.toLowerCase()) ||
-            h.subtitle.toLowerCase().includes(locQuery.toLowerCase())
-        )
-        : ALL_HUBS;
+    // LocationIQ search with local hub fallback
+    const { results: searchResults, loading } = useLocationIQSearch(locQuery, ALL_HUBS.map(h => ({ ...h, icon: h.icon || 'location-on' })));
 
-    // Photon fallback (only fires when no local matches & 3+ chars after 450ms)
-    const { photonResults, loading: photonLoading } = usePhotonSearch(locQuery, ALL_HUBS, HUB_COORDS);
+    // Show all hubs if no query, otherwise show search results
+    const displayResults = locQuery.trim().length === 0 ? ALL_HUBS : searchResults;
 
     return (
         <Modal
@@ -72,18 +68,34 @@ export default function LocationPickerModal({
                     )}
                 </View>
                 <FlatList
-                    data={filteredHubs}
+                    data={displayResults}
                     keyExtractor={(item) => item.id}
                     keyboardShouldPersistTaps="always"
                     contentContainerStyle={{ paddingBottom: 40 }}
+                    ListEmptyComponent={
+                        !loading && locQuery.trim().length > 0 ? (
+                            <View style={{ alignItems: 'center', paddingVertical: 32 }}>
+                                <MaterialIcons name="location-off" size={32} color="#ddd" />
+                                <Text style={{ fontSize: 14, color: '#aaa', marginTop: 8 }}>No locations found</Text>
+                            </View>
+                        ) : null
+                    }
+                    ListFooterComponent={
+                        loading ? (
+                            <View style={{ alignItems: 'center', paddingVertical: 16 }}>
+                                <ActivityIndicator size="small" color="#C24E00" />
+                                <Text style={{ fontSize: 12, color: '#aaa', marginTop: 6 }}>Searching locations...</Text>
+                            </View>
+                        ) : null
+                    }
                     renderItem={({ item }) => (
                         <TouchableOpacity
                             style={s.locPickerItem}
-                            onPress={() => applyLocSelection(item.label, HUB_COORDS[item.label])}
+                            onPress={() => applyLocSelection(item.label, { lat: item.lat, lng: item.lng })}
                             activeOpacity={0.7}
                         >
                             <View style={s.locPickerIcon}>
-                                <MaterialIcons name={item.icon} size={20} color="#C24E00" />
+                                <MaterialIcons name="location-on" size={20} color="#C24E00" />
                             </View>
                             <View style={{ flex: 1 }}>
                                 <Text style={s.locPickerItemLabel}>{item.label}</Text>
@@ -92,42 +104,6 @@ export default function LocationPickerModal({
                             <MaterialIcons name="chevron-right" size={20} color="#ddd" />
                         </TouchableOpacity>
                     )}
-                    ListFooterComponent={
-                        <>
-                            {/* Photon API results — below local hubs */}
-                            {photonLoading && (
-                                <View style={{ alignItems: 'center', paddingVertical: 16 }}>
-                                    <ActivityIndicator size="small" color="#C24E00" />
-                                    <Text style={{ fontSize: 12, color: '#aaa', marginTop: 6 }}>Searching nearby places...</Text>
-                                </View>
-                            )}
-                            {photonResults.length > 0 && photonResults.map((item) => (
-                                <TouchableOpacity
-                                    key={item.id}
-                                    style={s.locPickerItem}
-                                    onPress={() => applyLocSelection(item.label, { lat: item.lat, lng: item.lng })}
-                                    activeOpacity={0.7}
-                                >
-                                    <View style={s.locPickerIcon}>
-                                        <MaterialIcons name="public" size={20} color="#6B5344" />
-                                    </View>
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={s.locPickerItemLabel}>{item.label}</Text>
-                                        <Text style={s.locPickerItemSub}>{item.subtitle}</Text>
-                                    </View>
-                                    <MaterialIcons name="chevron-right" size={20} color="#ddd" />
-                                </TouchableOpacity>
-                            ))}
-                        </>
-                    }
-                    ListEmptyComponent={
-                        !photonLoading && photonResults.length === 0 ? (
-                            <View style={{ alignItems: 'center', padding: 40 }}>
-                                <MaterialIcons name="search-off" size={40} color="#ddd" />
-                                <Text style={{ color: '#aaa', marginTop: 8 }}>No locations found</Text>
-                            </View>
-                        ) : null
-                    }
                 />
             </SafeAreaView>
         </Modal>
