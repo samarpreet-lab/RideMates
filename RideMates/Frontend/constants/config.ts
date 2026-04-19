@@ -1,7 +1,7 @@
 // Frontend/constants/config.ts
 
 // Replace 192.168.1.5 with YOUR actual IPv4 Address (for local development)
-const LOCAL_IP = '192.168.1.17'; 
+const LOCAL_IP = '192.168.137.1'; 
 const DEV_API = `http://${LOCAL_IP}:5000/api`;
 const PROD_API = 'https://ridemates-api.onrender.com/api';
 
