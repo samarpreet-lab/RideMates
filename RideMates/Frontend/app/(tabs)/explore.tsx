@@ -88,9 +88,26 @@ export default function HomeScreen() {
         await deleteToken();
         router.replace('/(tabs)' as any);
       } else {
-        // FIX: Set error state for retry UI
+        // FIX: Set error state for retry UI with better error message
         setProfile(null);
-        setLoadError(error.response?.data?.message || 'Could not load profile. Please check your connection.');
+        
+        // Provide context-specific error message
+        let errorMessage = 'Could not load profile. Please check your connection.';
+        
+        if (!error.response) {
+          // Network error - likely connection refused or timeout
+          if (error.code === 'ECONNREFUSED') {
+            errorMessage = '❌ Cannot connect to backend.\n\nMake sure:\n• Backend is running (npm run dev)\n• IP in config.ts is correct\n• Port 5000 is accessible';
+          } else if (error.code === 'ETIMEDOUT') {
+            errorMessage = '⏱️ Connection timeout.\n\nBackend is unreachable or too slow. Check your network.';
+          } else {
+            errorMessage = `Network error: ${error.message || 'Unknown error'}`;
+          }
+        } else if (error.response?.status) {
+          errorMessage = `Server error (${error.response.status}): ${error.response.data?.message || error.message}`;
+        }
+        
+        setLoadError(errorMessage);
       }
     } finally {
       setLoading(false);

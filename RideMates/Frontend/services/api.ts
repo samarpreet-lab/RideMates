@@ -90,13 +90,47 @@ api.interceptors.request.use(
 );
 
 // --- Response interceptor: handle 401/403 (expired/invalid token, permission denied) ---
-// FIX: Added 403 handling for permission denied errors
+// FIX: Added 403 handling for permission denied errors + improved error logging
 let isHandling401 = false; // Prevent multiple 401 handlers from running simultaneously
 
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const status = error.response?.status;
+    const config = error.config;
+    
+    // Log network errors for debugging
+    if (!error.response) {
+      // Network error (no response from server)
+      const errorDetails = {
+        message: error.message,
+        code: error.code, // ECONNREFUSED, ETIMEDOUT, etc.
+        url: config?.url,
+        baseURL: config?.baseURL,
+        timeout: config?.timeout,
+      };
+      
+      if (error.code === 'ECONNREFUSED') {
+        console.error(
+          '❌ Network Error: Cannot connect to backend',
+          `\n📍 URL: ${config?.baseURL}${config?.url}`,
+          `\n💡 Make sure:`,
+          `  1. Backend server is running (npm run dev)`,
+          `  2. IP address is correct in config.ts (Android: 10.0.2.2, Device: your machine IP)`,
+          `  3. Port 5000 is accessible`,
+          `\n🔍 Details:`, errorDetails
+        );
+      } else if (error.code === 'ETIMEDOUT') {
+        console.error(
+          '❌ Network Error: Connection timeout',
+          `\n📍 URL: ${config?.baseURL}${config?.url}`,
+          `\n⏱️ Timeout: ${config?.timeout}ms`,
+          `\n💡 Backend may be slow or unreachable`
+        );
+      } else {
+        console.error('❌ Network Error:', errorDetails);
+      }
+    }
     
     if (status === 401 && !isHandling401) {
       // Token is expired or invalid — clear it

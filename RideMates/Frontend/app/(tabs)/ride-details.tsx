@@ -18,6 +18,7 @@ import {
     ScrollView,
     TouchableOpacity,
     ActivityIndicator,
+    Linking,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -132,6 +133,12 @@ export default function RideDetailsScreen() {
     // ─── Handle booking ────────────────────────────────────────────────────
     const handleBook = async () => {
         if (!ride || isBooking) return;
+
+        // Defense-in-depth: prevent booking if user is the driver or already has a booking
+        const driverCheck = profile?.id === ride.driver_id || ride.passengers !== undefined;
+        const bookingCheck = myBooking && myBooking.booking_status !== 'cancelled';
+        if (driverCheck || bookingCheck) return;
+
         setIsBooking(true);
 
         try {
@@ -142,6 +149,13 @@ export default function RideDetailsScreen() {
 
             if (res.data.success) {
                 setBooking(res.data.data);
+                // Update myBooking so UI immediately reflects the new state
+                setMyBooking({
+                    booking_id: res.data.data.booking_id,
+                    booking_status: res.data.data.booking_status || (ride.instant_booking ? 'confirmed' : 'pending'),
+                    seats_booked: res.data.data.seats_booked,
+                    price_paid: res.data.data.price_paid,
+                });
                 setStatusModal({
                     visible: true,
                     type: 'success',
@@ -150,7 +164,7 @@ export default function RideDetailsScreen() {
                     message: ride.instant_booking 
                         ? `Your booking with ${ride.driver_name} is confirmed.` 
                         : `Your request has been sent to ${ride.driver_name}. You'll be notified once they accept.`,
-                    pillText: 'BOOKING CONFIRMED',
+                    pillText: ride.instant_booking ? 'BOOKING CONFIRMED' : 'REQUEST SENT',
                     primaryLabel: 'Done',
                     primaryIcon: 'home',
                     onPrimaryPress: handleDone,
@@ -160,11 +174,81 @@ export default function RideDetailsScreen() {
                 showAlert({ type: 'error', title: 'Booking Failed', message: res.data.message || 'Could not book the ride.' });
             }
         } catch (err: any) {
-            const msg =
-                err.response?.data?.message || 'Something went wrong. Please try again.';
-            showAlert({ type: 'error', title: 'Booking Failed', message: msg });
+            const errCode = err.response?.data?.error;
+            const msg = err.response?.data?.message || 'Something went wrong. Please try again.';
+
+            // If user already booked (duplicate), refresh ride data to show current booking state
+            if (errCode === 'ALREADY_BOOKED' || errCode === 'SELF_BOOKING') {
+                showAlert({ type: 'warning', title: 'Already Booked', message: msg });
+                await fetchRide(); // Refresh to pick up existing booking / driver state
+            } else {
+                showAlert({ type: 'error', title: 'Booking Failed', message: msg });
+            }
         } finally {
             setIsBooking(false);
+        }
+    };
+
+    // ─── Handle cancel existing booking (passenger, from ride details) ─────
+    const handleCancelMyBooking = async () => {
+        if (!myBooking) return;
+        const bookingId = myBooking.booking_id;
+        const isPending = myBooking.booking_status === 'pending';
+
+        if (isPending) {
+            // Pending bookings can be withdrawn immediately, no penalty
+            try {
+                const res = await api.put(`/bookings/${bookingId}/cancel`);
+                if (res.data.success) {
+                    showAlert({ type: 'success', title: 'Request Withdrawn', message: res.data.message });
+                    await fetchRide();
+                }
+            } catch (e: any) {
+                showAlert({ type: 'error', title: 'Error', message: e.response?.data?.message || 'Could not withdraw.' });
+            }
+        } else {
+            // Confirmed bookings — show penalty warning first
+            const now = new Date();
+            const departure = new Date(ride!.departure_time);
+            const hoursLeft = (departure.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+            let penaltyWarning: string;
+            if (hoursLeft > 4) {
+                penaltyWarning = 'No penalty — free cancellation (more than 4 hours until departure).';
+            } else if (hoursLeft > 0.5) {
+                penaltyWarning = '⚠️ Late cancellation — you will lose 2 Trust Points.';
+            } else {
+                penaltyWarning = '⚠️ Last-minute cancellation — you will lose 5 Trust Points (same as a no-show).';
+            }
+
+            setStatusModal({
+                visible: true,
+                type: 'warning',
+                iconName: 'alert-circle',
+                title: 'Cancel Booking?',
+                message: `Are you sure you want to cancel your booking?\n\n${penaltyWarning}`,
+                primaryLabel: 'Cancel Booking',
+                primaryIcon: 'cancel',
+                onPrimaryPress: async () => {
+                    setStatusModal(null);
+                    try {
+                        const res = await api.put(`/bookings/${bookingId}/cancel`);
+                        if (res.data.success) {
+                            const { penalty, tier } = res.data.data;
+                            let msg = res.data.message;
+                            if (penalty > 0) msg += `\n\nPenalty: −${penalty} Trust Points (${tier})`;
+                            showAlert({ type: penalty > 0 ? 'warning' : 'success', title: 'Booking Cancelled', message: msg });
+                            await fetchRide();
+                        } else {
+                            showAlert({ type: 'error', title: 'Error', message: res.data.message || 'Could not cancel booking.' });
+                        }
+                    } catch (e: any) {
+                        showAlert({ type: 'error', title: 'Error', message: e.response?.data?.message || 'Failed to cancel booking.' });
+                    }
+                },
+                secondaryLabel: 'Keep Booking',
+                onSecondaryPress: () => setStatusModal(null),
+            });
         }
     };
 
@@ -313,8 +397,11 @@ export default function RideDetailsScreen() {
     const perSeatPrice = Math.round(parseFloat(String(ride.capped_price)) * 100) / 100;
     const totalPrice = Math.round(perSeatPrice * seatsSelected * 100) / 100;
     const hasMyBooking = myBooking && myBooking.booking_status !== 'cancelled';
-    const canBook = ride.status === 'active' && ride.available_seats > 0 && !hasMyBooking;
-    const isDriver = profile?.id === ride.driver_id;
+    // FIX: Use passengers array as a secondary signal — backend only attaches it for the driver
+    const isDriver = profile?.id === ride.driver_id || ride.passengers !== undefined;
+    const canBook = ride.status === 'active' && ride.available_seats > 0 && !hasMyBooking && !isDriver;
+    const isPendingBooking = myBooking?.booking_status === 'pending';
+    const isConfirmedBooking = myBooking?.booking_status === 'confirmed' || myBooking?.booking_status === 'completed';
 
     return (
         <View style={ds.root}>
@@ -354,27 +441,26 @@ export default function RideDetailsScreen() {
 
                 {/* show my booking summary if I already booked */}
                 {!isDriver && hasMyBooking && (
-                    <View style={{ padding: 16, backgroundColor: '#FFF7E8', borderRadius: 12, marginVertical: 12 }}>
-                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#C24E00' }}>
-                            You have a {myBooking.booking_status} booking for {myBooking.seats_booked} seat{myBooking.seats_booked>1?'s':''}.
+                    <View style={{ padding: 16, backgroundColor: isPendingBooking ? '#FFFBEB' : '#F0FDF4', borderRadius: 12, marginVertical: 12, borderLeftWidth: 4, borderLeftColor: isPendingBooking ? '#f59e0b' : '#22c55e' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <MaterialIcons 
+                                name={isPendingBooking ? 'hourglass-top' : 'check-circle'} 
+                                size={20} 
+                                color={isPendingBooking ? '#f59e0b' : '#22c55e'} 
+                            />
+                            <Text style={{ fontSize: 14, fontWeight: '700', color: isPendingBooking ? '#92400e' : '#166534' }}>
+                                {isPendingBooking 
+                                    ? `Request pending — awaiting ${ride.driver_name}'s approval`
+                                    : `Booking confirmed — ${myBooking.seats_booked} seat${myBooking.seats_booked > 1 ? 's' : ''} reserved`
+                                }
+                            </Text>
+                        </View>
+                        <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 6, marginLeft: 28 }}>
+                            {isPendingBooking
+                                ? 'You will be notified once the driver accepts or rejects your request.'
+                                : `Amount: ₹${myBooking.price_paid} • ${myBooking.seats_booked} seat${myBooking.seats_booked > 1 ? 's' : ''}`
+                            }
                         </Text>
-                        {myBooking.booking_status === 'pending' && (
-                            <TouchableOpacity
-                                style={[ds.cancelRideBtn, { marginTop: 8 }]}
-                                onPress={async () => {
-                                    try {
-                                        const res = await api.put(`/bookings/${myBooking.booking_id}/cancel`);
-                                        if (res.data.success) {
-                                            showAlert({type:'success', title:'Request withdrawn', message:res.data.message});
-                                            await fetchRide();
-                                        }
-                                    } catch(e:any){showAlert({type:'error',title:'Error',message:e.response?.data?.message||'Could not withdraw.'});}
-                                }}
-                            >
-                                <MaterialIcons name="cancel" size={18} color="#ef4444" />
-                                <Text style={[ds.cancelRideBtnText,{marginLeft:6}]}>Withdraw Request</Text>
-                            </TouchableOpacity>
-                        )}
                     </View>
                 )}
 
@@ -447,7 +533,62 @@ export default function RideDetailsScreen() {
                         </TouchableOpacity>
                     </View>
                 </View>
+            ) : !isDriver && isPendingBooking ? (
+                /* ── Pending booking: show status + withdraw option ── */
+                <View style={ds.bottomBar}>
+                    <View style={ds.bottomBarRow}>
+                        <View style={ds.bottomPriceCol}>
+                            <Text style={[ds.bottomPriceLabel, { color: '#f59e0b' }]}>⏳ Pending</Text>
+                            <Text style={[ds.bottomPriceValue, { fontSize: 13, color: '#92400e' }]}>Awaiting approval</Text>
+                        </View>
+                        <TouchableOpacity
+                            style={[ds.bookBtn, { backgroundColor: '#ef4444' }]}
+                            onPress={handleCancelMyBooking}
+                            activeOpacity={0.87}
+                        >
+                            <MaterialIcons name="close" size={20} color="#fff" />
+                            <Text style={ds.bookBtnText}>Withdraw</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            ) : !isDriver && isConfirmedBooking ? (
+                /* ── Confirmed booking: show status + contact/cancel options ── */
+                <View style={ds.bottomBar}>
+                    <View style={ds.bottomBarRow}>
+                        <View style={ds.bottomPriceCol}>
+                            <Text style={[ds.bottomPriceLabel, { color: '#22c55e' }]}>✅ Confirmed</Text>
+                            <Text style={[ds.bottomPriceValue, { fontSize: 13 }]}>₹{myBooking.price_paid}</Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                            {ride.driver_phone && (
+                                <TouchableOpacity
+                                    style={[ds.bookBtn, { backgroundColor: '#22c55e', paddingHorizontal: 14 }]}
+                                    onPress={() => {
+                                        const cleaned = ride.driver_phone!.replace(/\D/g, '');
+                                        const finalPhone = cleaned.length === 10 ? `91${cleaned}` : cleaned;
+                                        const msg = `Hi ${ride.driver_name || 'Driver'}! I have a confirmed booking for your RideMates ride from *${ride.origin_city}* to *${ride.destination_city}*. Where should we meet for pickup?`;
+                                        const url = `https://wa.me/${finalPhone}?text=${encodeURIComponent(msg)}`;
+                                        Linking.canOpenURL(url).then(can => { if (can) Linking.openURL(url); });
+                                    }}
+                                    activeOpacity={0.87}
+                                >
+                                    <MaterialIcons name="chat" size={18} color="#fff" />
+                                    <Text style={ds.bookBtnText}>WhatsApp</Text>
+                                </TouchableOpacity>
+                            )}
+                            <TouchableOpacity
+                                style={[ds.bookBtn, { backgroundColor: '#ef4444', paddingHorizontal: 14 }]}
+                                onPress={handleCancelMyBooking}
+                                activeOpacity={0.87}
+                            >
+                                <MaterialIcons name="cancel" size={18} color="#fff" />
+                                <Text style={ds.bookBtnText}>Cancel</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
             ) : (
+                /* ── No booking possible: fully booked or inactive ── */
                 <View style={ds.bottomBar}>
                     <View style={ds.bottomBarRow}>
                         <View

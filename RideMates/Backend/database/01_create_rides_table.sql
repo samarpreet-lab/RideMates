@@ -35,7 +35,7 @@ CREATE TABLE bookings (
     passenger_id    INT NOT NULL,
     seats_booked    TINYINT DEFAULT 1,
     price_paid      DECIMAL(8, 2) NOT NULL,
-    status          ENUM('confirmed', 'cancelled', 'completed') DEFAULT 'confirmed',
+    status          ENUM('pending', 'confirmed', 'cancelled', 'completed') DEFAULT 'confirmed',
     booked_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (ride_id) REFERENCES rides(id) ON DELETE CASCADE,
     FOREIGN KEY (passenger_id) REFERENCES users(id) ON DELETE CASCADE,

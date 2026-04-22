@@ -176,8 +176,7 @@ export default function SignupScreen() {
         type: 'confirm', 
         title: 'Confirm Gender', 
         message: 'You selected "Other" as your gender. Is this correct?',
-        onConfirm: () => completeProfileRequest(),
-        onCancel: () => {}
+        onConfirm: () => completeProfileRequest()
       });
       return;
     }
