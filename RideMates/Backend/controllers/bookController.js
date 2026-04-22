@@ -42,7 +42,6 @@ async function bookSeat(req, res) {
     // --- Validate inputs ---
     // FIX: Validate seats is a positive integer within reasonable range
     if (isNaN(seatsRequested) || seatsRequested < 1 || seatsRequested > 10) {
-      connection.release();
       return res.status(400).json({
         success: false,
         message: 'Seats must be between 1 and 10.',
@@ -51,7 +50,6 @@ async function bookSeat(req, res) {
     }
 
     if (!ride_id) {
-      connection.release();
       return res.status(400).json({
         success: false,
         message: 'Please specify a ride to book.',
@@ -73,7 +71,6 @@ async function bookSeat(req, res) {
 
     if (rideData.length === 0) {
       await connection.rollback();
-      connection.release();
       return res.status(404).json({
         success: false,
         message: 'This ride is no longer available.',
@@ -86,7 +83,6 @@ async function bookSeat(req, res) {
     // Can't book your own ride
     if (ride.driver_id === passenger_id) {
       await connection.rollback();
-      connection.release();
       return res.status(400).json({
         success: false,
         message: 'You cannot book your own ride.',
@@ -97,7 +93,6 @@ async function bookSeat(req, res) {
     // Can only book active rides
     if (ride.status !== 'active') {
       await connection.rollback();
-      connection.release();
       return res.status(400).json({
         success: false,
         message: 'This ride is no longer active.',
@@ -109,7 +104,6 @@ async function bookSeat(req, res) {
     // If the ride is marked women-only, only female passengers may book.
     if (ride.is_women_only && req.user.gender !== 'female') {
       await connection.rollback();
-      connection.release();
       return res.status(403).json({
         success: false,
         message: 'This ride is reserved for women only.',
@@ -120,7 +114,6 @@ async function bookSeat(req, res) {
     // --- Step 2: Check seat availability (while row is locked) ---
     if (ride.available_seats < seatsRequested) {
       await connection.rollback();
-      connection.release();
       return res.status(400).json({
         success: false,
         message: `Not enough seats available. Requested: ${seatsRequested}, Available: ${ride.available_seats}`,
@@ -146,6 +139,21 @@ async function bookSeat(req, res) {
         'UPDATE rides SET available_seats = available_seats - ? WHERE id = ?',
         [seatsRequested, ride_id]
       );
+    }
+
+    // Check if there's already an active booking for this passenger+ride
+    const [activeBooking] = await connection.query(
+      `SELECT id, status FROM bookings WHERE ride_id = ? AND passenger_id = ? AND status IN ('pending', 'confirmed')`,
+      [ride_id, passenger_id]
+    );
+
+    if (activeBooking.length > 0) {
+      await connection.rollback();
+      return res.status(409).json({
+        success: false,
+        message: 'You have already booked this ride.',
+        error: 'ALREADY_BOOKED',
+      });
     }
 
     // Check if there's a previously cancelled booking for this passenger+ride
@@ -194,8 +202,6 @@ async function bookSeat(req, res) {
   } catch (error) {
     // If ANYTHING fails, undo all changes
     await connection.rollback();
-    // FIX: Release connection in catch block to prevent pool exhaustion
-    connection.release();
     console.error('Error in bookSeat:', error);
 
     // Handle duplicate booking (UNIQUE KEY on ride_id + passenger_id)
@@ -293,7 +299,6 @@ async function cancelBooking(req, res) {
 
     if (bookings.length === 0) {
       await connection.rollback();
-      connection.release();
       return res.status(404).json({
         success: false,
         message: 'Booking not found.',
@@ -306,7 +311,6 @@ async function cancelBooking(req, res) {
     // --- Only the passenger can cancel their own booking ---
     if (booking.passenger_id !== userId) {
       await connection.rollback();
-      connection.release();
       return res.status(403).json({
         success: false,
         message: 'You can only cancel your own bookings.',
@@ -316,7 +320,6 @@ async function cancelBooking(req, res) {
 
     if (booking.status !== 'confirmed' && booking.status !== 'pending') {
       await connection.rollback();
-      connection.release();
       return res.status(400).json({
         success: false,
         message: 'This booking is already ' + booking.status + '.',
@@ -328,7 +331,6 @@ async function cancelBooking(req, res) {
     if (booking.status === 'pending') {
       await connection.query("UPDATE bookings SET status = 'cancelled' WHERE id = ?", [bookingId]);
       await connection.commit();
-      connection.release();
       return res.status(200).json({
         success: true,
         message: 'Booking request withdrawn.',
@@ -373,7 +375,6 @@ async function cancelBooking(req, res) {
     );
 
     await connection.commit();
-    connection.release();
 
     res.status(200).json({
       success: true,
@@ -385,18 +386,19 @@ async function cancelBooking(req, res) {
     });
   } catch (error) {
     await connection.rollback();
-    connection.release();
     console.error('Error in cancelBooking:', error);
     res.status(500).json({
       success: false,
       message: 'Something went wrong. Please try again.',
       error: 'INTERNAL_ERROR',
     });
+  } finally {
+    connection.release();
   }
 }
 
 
-module.exports = { bookSeat, getMyBookings, cancelBooking, acceptBooking, rejectBooking };
+// (acceptBooking and rejectBooking defined below — module.exports at end of file)
 
 
 // =============================================================================
@@ -428,7 +430,6 @@ async function acceptBooking(req, res) {
 
     if (rows.length === 0) {
       await connection.rollback();
-      connection.release();
       return res.status(404).json({ success: false, message: 'Booking not found.', error: 'BOOKING_NOT_FOUND' });
     }
 
@@ -436,19 +437,16 @@ async function acceptBooking(req, res) {
 
     if (row.driver_id !== driverId) {
       await connection.rollback();
-      connection.release();
       return res.status(403).json({ success: false, message: 'Only the ride driver can accept bookings.', error: 'FORBIDDEN' });
     }
 
     if (row.booking_status !== 'pending') {
       await connection.rollback();
-      connection.release();
       return res.status(400).json({ success: false, message: 'Only pending bookings can be accepted.', error: 'BOOKING_NOT_PENDING' });
     }
 
     if (row.available_seats < row.seats_booked) {
       await connection.rollback();
-      connection.release();
       return res.status(400).json({ success: false, message: 'Not enough seats left to accept this request.', error: 'INSUFFICIENT_SEATS' });
     }
 
@@ -512,3 +510,6 @@ async function rejectBooking(req, res) {
     res.status(500).json({ success: false, message: 'Something went wrong.', error: 'INTERNAL_ERROR' });
   }
 }
+
+
+module.exports = { bookSeat, getMyBookings, cancelBooking, acceptBooking, rejectBooking };

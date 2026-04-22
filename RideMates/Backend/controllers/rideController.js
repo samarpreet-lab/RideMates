@@ -210,8 +210,8 @@ async function createRide(req, res) {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         driver_id,
-        origin_city, origin_lat || 0, origin_lng || 0,
-        destination_city, dest_lat || 0, dest_lng || 0,
+        origin_city, oLat.value, oLng.value,
+        destination_city, dLat.value, dLng.value,
         distance_km,
         departure_time,
         available_seats,
@@ -425,7 +425,6 @@ async function updateRide(req, res) {
 
     if (rides.length === 0) {
       await connection.rollback();
-      connection.release();
       return res.status(404).json({
         success: false,
         message: 'This ride is no longer available.',
@@ -435,7 +434,6 @@ async function updateRide(req, res) {
 
     if (rides[0].driver_id !== userId) {
       await connection.rollback();
-      connection.release();
       return res.status(403).json({
         success: false,
         message: 'You can only edit your own rides.',
@@ -445,7 +443,6 @@ async function updateRide(req, res) {
 
     if (rides[0].status !== 'active') {
       await connection.rollback();
-      connection.release();
       return res.status(400).json({
         success: false,
         message: 'Only active rides can be updated.',
@@ -466,7 +463,6 @@ async function updateRide(req, res) {
       );
       if (bookings > 0) {
         await connection.rollback();
-        connection.release();
         return res.status(400).json({
           success: false,
           message: 'You cannot change the departure time because passengers have already booked. Please cancel and repost the ride.',
@@ -520,7 +516,6 @@ async function updateRide(req, res) {
 
     if (updates.length === 0) {
       await connection.rollback();
-      connection.release();
       return res.status(400).json({
         success: false,
         message: 'No fields provided to update.',
@@ -560,17 +555,22 @@ async function updateRide(req, res) {
 // SRS: Section 6.2 — DELETE /api/rides/:id (driver only)
 // =============================================================================
 async function cancelRide(req, res) {
+  const connection = await pool.getConnection();
+
   try {
     const rideId = req.params.id;
     const userId = req.user.id;
 
-    // --- Check ownership ---
-    const [rides] = await pool.query(
-      'SELECT driver_id, status, departure_time FROM rides WHERE id = ?',
+    await connection.beginTransaction();
+
+    // --- Check ownership (with row lock) ---
+    const [rides] = await connection.query(
+      'SELECT driver_id, status, departure_time FROM rides WHERE id = ? FOR UPDATE',
       [rideId]
     );
 
     if (rides.length === 0) {
+      await connection.rollback();
       return res.status(404).json({
         success: false,
         message: 'This ride is no longer available.',
@@ -579,6 +579,7 @@ async function cancelRide(req, res) {
     }
 
     if (rides[0].driver_id !== userId) {
+      await connection.rollback();
       return res.status(403).json({
         success: false,
         message: 'You can only cancel your own rides.',
@@ -587,6 +588,7 @@ async function cancelRide(req, res) {
     }
 
     if (rides[0].status !== 'active') {
+      await connection.rollback();
       return res.status(400).json({
         success: false,
         message: 'This ride is already ' + rides[0].status + '.',
@@ -597,14 +599,14 @@ async function cancelRide(req, res) {
     // --- Driver cancellation penalty: mirrors the passenger penalty logic ---
     // If confirmed passengers exist and cancellation is within the penalty window,
     // deduct Trust Points from the driver — mutual accountability (SRS 8.3).
-    const [confirmedBookings] = await pool.query(
+    const [confirmedBookings] = await connection.query(
       'SELECT COUNT(*) AS cnt FROM bookings WHERE ride_id = ? AND status = ?',
       [rideId, 'confirmed']
     );
     if (confirmedBookings[0].cnt > 0) {
       const { penalty } = calculateCancellationPenalty(rides[0].departure_time, new Date());
       if (penalty > 0) {
-        await pool.query(
+        await connection.query(
           'UPDATE users SET trust_score = trust_score - ? WHERE id = ?',
           [penalty, userId]
         );
@@ -612,25 +614,30 @@ async function cancelRide(req, res) {
     }
 
     // --- Cancel the ride ---
-    await pool.query("UPDATE rides SET status = 'cancelled' WHERE id = ?", [rideId]);
+    await connection.query("UPDATE rides SET status = 'cancelled' WHERE id = ?", [rideId]);
 
-    // --- Also cancel all confirmed bookings on this ride ---
-    await pool.query(
-      "UPDATE bookings SET status = 'cancelled' WHERE ride_id = ? AND status = 'confirmed'",
+    // --- Also cancel all confirmed AND pending bookings on this ride ---
+    await connection.query(
+      "UPDATE bookings SET status = 'cancelled' WHERE ride_id = ? AND status IN ('confirmed', 'pending')",
       [rideId]
     );
+
+    await connection.commit();
 
     res.status(200).json({
       success: true,
       message: 'Ride cancelled successfully.',
     });
   } catch (error) {
+    await connection.rollback();
     console.error('Error in cancelRide:', error);
     res.status(500).json({
       success: false,
       message: 'Something went wrong. Please try again.',
       error: 'INTERNAL_ERROR',
     });
+  } finally {
+    connection.release();
   }
 }
 
@@ -645,17 +652,22 @@ async function cancelRide(req, res) {
 // SRS: FR-LIFE-02 — Mark ride complete
 // =============================================================================
 async function completeRide(req, res) {
+  const connection = await pool.getConnection();
+
   try {
     const rideId = req.params.id;
     const userId = req.user.id;
 
-    // --- Check ownership ---
-    const [rides] = await pool.query(
-      'SELECT driver_id, status, departure_time FROM rides WHERE id = ?',
+    await connection.beginTransaction();
+
+    // --- Check ownership (with row lock) ---
+    const [rides] = await connection.query(
+      'SELECT driver_id, status, departure_time FROM rides WHERE id = ? FOR UPDATE',
       [rideId]
     );
 
     if (rides.length === 0) {
+      await connection.rollback();
       return res.status(404).json({
         success: false,
         message: 'This ride is no longer available.',
@@ -664,6 +676,7 @@ async function completeRide(req, res) {
     }
 
     if (rides[0].driver_id !== userId) {
+      await connection.rollback();
       return res.status(403).json({
         success: false,
         message: 'Only the driver can mark a ride as complete.',
@@ -672,6 +685,7 @@ async function completeRide(req, res) {
     }
 
     if (rides[0].status !== 'active') {
+      await connection.rollback();
       return res.status(400).json({
         success: false,
         message: 'Only active rides can be completed.',
@@ -681,6 +695,7 @@ async function completeRide(req, res) {
 
     // --- Time Lock: cannot complete a ride before it was scheduled to depart ---
     if (new Date() < new Date(rides[0].departure_time)) {
+      await connection.rollback();
       return res.status(400).json({
         success: false,
         message: 'You cannot mark a ride as complete before its scheduled departure time.',
@@ -689,28 +704,39 @@ async function completeRide(req, res) {
     }
 
     // --- Mark ride as completed + record timestamp ---
-    await pool.query(
+    await connection.query(
       "UPDATE rides SET status = 'completed', completed_at = NOW() WHERE id = ?",
       [rideId]
     );
 
     // --- Transition all confirmed bookings to 'completed' (FR-LIFE-02) ---
-    await pool.query(
+    await connection.query(
       "UPDATE bookings SET status = 'completed' WHERE ride_id = ? AND status = 'confirmed'",
       [rideId]
     );
+
+    // --- Cancel any remaining pending bookings (they missed the window) ---
+    await connection.query(
+      "UPDATE bookings SET status = 'cancelled' WHERE ride_id = ? AND status = 'pending'",
+      [rideId]
+    );
+
+    await connection.commit();
 
     res.status(200).json({
       success: true,
       message: 'Ride completed! The 12-hour report window is now open.',
     });
   } catch (error) {
+    await connection.rollback();
     console.error('Error in completeRide:', error);
     res.status(500).json({
       success: false,
       message: 'Something went wrong. Please try again.',
       error: 'INTERNAL_ERROR',
     });
+  } finally {
+    connection.release();
   }
 }
 

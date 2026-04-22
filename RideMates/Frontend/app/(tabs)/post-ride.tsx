@@ -320,7 +320,7 @@ export default function PostRideScreen() {
           onPress: () => {
             setSuccessModalVisible(false);
             if (createdRideId) {
-              router.replace({ pathname: '/(tabs)/ride-details', params: { id: createdRideId } });
+              router.replace({ pathname: '/(tabs)/ride-details', params: { rideId: createdRideId } });
             } else {
               router.replace('/(tabs)/explore');
             }

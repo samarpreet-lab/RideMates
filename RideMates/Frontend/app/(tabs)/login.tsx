@@ -64,7 +64,7 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      await api.post('/auth/send-otp', { email });
+      await api.post('/auth/send-otp', { email, purpose: 'login' });
       setEmailFound(true);
       setOtpSent(true);
       setTimer(60);

@@ -42,7 +42,6 @@ export default function MyRidesScreen() {
     const [publishedRides, setPublishedRides] = useState<any[]>([]);
     const [errorLine, setErrorLine] = useState('');
     const [statusModal, setStatusModal] = useState<any>(null);
-    const [isFlagged, setIsFlagged] = useState(false);
 
     // Report Modal State
     const [reportModalVisible, setReportModalVisible] = useState(false);
@@ -79,10 +78,7 @@ export default function MyRidesScreen() {
                 setErrorLine(res.data.message || 'Could not fetch rides.');
             }
 
-            // FIX: Safer check for profile data (flagged_for_review may not exist)
-            if (profileRes.data?.success && profileRes.data?.data) {
-                setIsFlagged(!!profileRes.data.data.flagged_for_review);
-            }
+
 
             // Check for rides that need completion prompts (driver only, > 2h past departure)
             if (res.data.success && res.data.data.as_driver) {
@@ -297,18 +293,7 @@ export default function MyRidesScreen() {
                 />
             </View>
 
-            {/* System Warning Banner */}
-            {isFlagged && (
-                <View style={{ backgroundColor: '#FEF2F2', padding: 16, borderBottomWidth: 1, borderBottomColor: '#FEE2E2', flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-                    <MaterialIcons name="error-outline" size={24} color="#EF4444" style={{ marginTop: 2 }} />
-                    <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#991B1B', marginBottom: 4 }}>System Warning</Text>
-                        <Text style={{ fontSize: 13, color: '#B91C1C', lineHeight: 18 }}>
-                            Your account has been flagged for multiple reports indicating unsafe behavior, misconduct, or high cancellation rates. Further reports may result in account suspension.
-                        </Text>
-                    </View>
-                </View>
-            )}
+
 
             {/* Content Area */}
             {loading ? (

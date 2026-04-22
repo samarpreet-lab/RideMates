@@ -135,7 +135,7 @@ export default function RideDetailsScreen() {
         if (!ride || isBooking) return;
 
         // Defense-in-depth: prevent booking if user is the driver or already has a booking
-        const driverCheck = profile?.id === ride.driver_id || ride.passengers !== undefined;
+        const driverCheck = profile?.id === ride.driver_id;
         const bookingCheck = myBooking && myBooking.booking_status !== 'cancelled';
         if (driverCheck || bookingCheck) return;
 
@@ -398,7 +398,7 @@ export default function RideDetailsScreen() {
     const totalPrice = Math.round(perSeatPrice * seatsSelected * 100) / 100;
     const hasMyBooking = myBooking && myBooking.booking_status !== 'cancelled';
     // FIX: Use passengers array as a secondary signal — backend only attaches it for the driver
-    const isDriver = profile?.id === ride.driver_id || ride.passengers !== undefined;
+    const isDriver = profile?.id === ride.driver_id;
     const canBook = ride.status === 'active' && ride.available_seats > 0 && !hasMyBooking && !isDriver;
     const isPendingBooking = myBooking?.booking_status === 'pending';
     const isConfirmedBooking = myBooking?.booking_status === 'confirmed' || myBooking?.booking_status === 'completed';

@@ -156,6 +156,15 @@ async function autoCompleteStaleRides() {
         [rideIds]
       );
 
+      // Step 4: Cancel any remaining pending bookings (they missed the window)
+      await conn.query(
+        `UPDATE bookings
+         SET status = 'cancelled'
+         WHERE ride_id IN (?)
+           AND status = 'pending'`,
+        [rideIds]
+      );
+
       console.log(`⏰ Auto-completed ${rideIds.length} stale ride(s) and their bookings.`);
     }
 
