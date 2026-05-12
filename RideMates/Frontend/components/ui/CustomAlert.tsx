@@ -92,7 +92,7 @@ export default function CustomAlert({
                 }),
             ]).start();
         }
-    }, [visible]);
+    }, [visible, scaleAnim, fadeAnim]);
 
     const isConfirm = type === 'confirm' && onConfirm;
 

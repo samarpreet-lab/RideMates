@@ -115,7 +115,7 @@ export interface Ride {
   driver_trust_score: number;
   completed_at: string | null;
   created_at: string;
-  passengers?: Array<{
+  passengers?: {
     booking_id: number;
     passenger_id: number;
     passenger_name: string;
@@ -125,7 +125,7 @@ export interface Ride {
     seats_booked: number;
     price_paid: number;
     booking_status: string;
-  }>;
+  }[];
 }
 
 // ─── Helper Functions ──────────────────────────────────────────────────────
@@ -184,15 +184,70 @@ export function getDateString(option: string, customDate?: Date): string | undef
   return undefined;
 }
 
-export function formatDepartureTime(iso: string): string {
-  const d = new Date(iso);
-  const hours = d.getHours();
-  const mins = d.getMinutes().toString().padStart(2, '0');
+export function parseRideDateTime(dateValue: string | Date | undefined | null): Date | null {
+  if (!dateValue) return null;
+
+  if (dateValue instanceof Date) {
+    return isNaN(dateValue.getTime()) ? null : dateValue;
+  }
+
+  const raw = String(dateValue).trim();
+  if (!raw) return null;
+
+  // MySQL DATETIME without timezone: parse as local time explicitly.
+  const mysqlLocal = raw.match(
+    /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,3})?)?$/
+  );
+  const hasTimezone = /Z$|[+-]\d{2}:?\d{2}$/.test(raw);
+  if (mysqlLocal && !hasTimezone) {
+    const year = Number(mysqlLocal[1]);
+    const month = Number(mysqlLocal[2]) - 1;
+    const day = Number(mysqlLocal[3]);
+    const hour = Number(mysqlLocal[4]);
+    const minute = Number(mysqlLocal[5]);
+    const second = Number(mysqlLocal[6] || '0');
+    const localDate = new Date(year, month, day, hour, minute, second);
+    return isNaN(localDate.getTime()) ? null : localDate;
+  }
+
+  const parsed = new Date(raw);
+  return isNaN(parsed.getTime()) ? null : parsed;
+}
+
+export function formatDepartureClock(dateValue: string | Date | undefined | null): string {
+  const date = parseRideDateTime(dateValue);
+  if (!date) return 'Time not set';
+
+  const hours = date.getHours();
+  const mins = date.getMinutes();
   const ampm = hours >= 12 ? 'PM' : 'AM';
   const h = hours % 12 || 12;
-  const day = d.getDate();
+  return `${h}:${mins.toString().padStart(2, '0')} ${ampm}`;
+}
+
+export function formatDistanceKm(distanceKm: number | string | undefined | null): string {
+  const value =
+    typeof distanceKm === 'string' ? Number.parseFloat(distanceKm) : Number(distanceKm);
+
+  if (!Number.isFinite(value) || value <= 0) {
+    return '0.0 km';
+  }
+
+  return `${value.toFixed(1)} km`;
+}
+
+export function formatDepartureTime(dateValue: string | Date | undefined | null): string {
+  const date = parseRideDateTime(dateValue);
+  if (!date) return 'Time not set';
+
+  const day = date.getDate();
+  const month = date.getMonth();
+  const hours = date.getHours();
+  const mins = date.getMinutes();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const h = hours % 12 || 12;
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  return `${day} ${months[d.getMonth()]}, ${h}:${mins} ${ampm}`;
+  return `${day} ${months[month]}, ${h}:${mins.toString().padStart(2, '0')} ${ampm}`;
 }
 
 export function getVehicleIcon(type: string): string {

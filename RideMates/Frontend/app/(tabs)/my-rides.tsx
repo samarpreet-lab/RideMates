@@ -26,6 +26,7 @@ import { useAlert } from '../../components/ui/AlertContext';
 import { MyRidesSkeleton } from '../../components/ui/SkeletonLoader';
 import RideStatusModal from '../../components/ui/RideStatusModal';
 import ReportModal from '../../components/ui/ReportModal';
+import { parseRideDateTime } from '../../components/Explore/constants';
 
 const { width } = Dimensions.get('window');
 const TAB_WIDTH = width / 2;
@@ -97,7 +98,8 @@ export default function MyRidesScreen() {
             const now = new Date();
             for (const ride of driverRides) {
                 if (ride.status === 'active') {
-                    const departure = new Date(ride.departure_time);
+                    const departure = parseRideDateTime(ride.departure_time);
+                    if (!departure) continue;
                     const hoursSinceDeparture = (now.getTime() - departure.getTime()) / (1000 * 60 * 60);
                     
                     if (hoursSinceDeparture >= 2) {

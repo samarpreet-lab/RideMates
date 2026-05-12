@@ -20,10 +20,10 @@ import {
     ActivityIndicator,
     Linking,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import api from '../../services/api';
-import { Ride } from '../../components/Explore/constants';
+import { Ride, parseRideDateTime, formatDepartureClock } from '../../components/Explore/constants';
 import { ds } from '../../components/RideDetails/styles';
 import DriverInfoCard from '../../components/RideDetails/DriverInfoCard';
 import RouteTimeline from '../../components/RideDetails/RouteTimeline';
@@ -44,6 +44,18 @@ interface BookingData {
     seats_booked: number;
     price_paid: number;
     remaining_seats: number;
+}
+
+function toNumericId(value: unknown): number | null {
+    const num = Number(value);
+    return Number.isFinite(num) ? num : null;
+}
+
+function isViewerRideDriver(profileData: any, rideData: Ride | null): boolean {
+    if (!rideData) return false;
+    const viewerId = toNumericId(profileData?.id);
+    const driverId = toNumericId(rideData.driver_id);
+    return viewerId !== null && driverId !== null && viewerId === driverId;
 }
 
 export default function RideDetailsScreen() {
@@ -130,12 +142,20 @@ export default function RideDetailsScreen() {
         }
     }, [rideId]);
 
+    // ─── Clear modal when screen comes into focus ──────────────────────────
+    useFocusEffect(
+        React.useCallback(() => {
+            // Clear any lingering status modal when navigating back to this screen
+            setStatusModal(null);
+        }, [])
+    );
+
     // ─── Handle booking ────────────────────────────────────────────────────
     const handleBook = async () => {
         if (!ride || isBooking) return;
 
         // Defense-in-depth: prevent booking if user is the driver or already has a booking
-        const driverCheck = profile?.id === ride.driver_id;
+        const driverCheck = isViewerRideDriver(profile, ride);
         const bookingCheck = myBooking && myBooking.booking_status !== 'cancelled';
         if (driverCheck || bookingCheck) return;
 
@@ -209,7 +229,15 @@ export default function RideDetailsScreen() {
         } else {
             // Confirmed bookings — show penalty warning first
             const now = new Date();
-            const departure = new Date(ride!.departure_time);
+            const departure = parseRideDateTime(ride!.departure_time);
+            if (!departure) {
+                showAlert({
+                    type: 'error',
+                    title: 'Cannot Cancel Right Now',
+                    message: 'Departure time is unavailable for this ride. Please try again in a moment.',
+                });
+                return;
+            }
             const hoursLeft = (departure.getTime() - now.getTime()) / (1000 * 60 * 60);
 
             let penaltyWarning: string;
@@ -398,8 +426,10 @@ export default function RideDetailsScreen() {
     const totalPrice = Math.round(perSeatPrice * seatsSelected * 100) / 100;
     const hasMyBooking = myBooking && myBooking.booking_status !== 'cancelled';
     // FIX: Use passengers array as a secondary signal — backend only attaches it for the driver
-    const isDriver = profile?.id === ride.driver_id;
-    const canBook = ride.status === 'active' && ride.available_seats > 0 && !hasMyBooking && !isDriver;
+    const isDriver = isViewerRideDriver(profile, ride);
+    // SECURITY: Ensure profile is properly loaded (id is not null) before allowing driver actions
+    const isAuthenticatedDriver = isDriver && profile?.id !== null && profile?.id !== undefined;
+    const canBook = ride.status === 'active' && ride.available_seats > 0 && !hasMyBooking && !isAuthenticatedDriver;
     const isPendingBooking = myBooking?.booking_status === 'pending';
     const isConfirmedBooking = myBooking?.booking_status === 'confirmed' || myBooking?.booking_status === 'completed';
 
@@ -464,7 +494,7 @@ export default function RideDetailsScreen() {
                     </View>
                 )}
 
-                {isDriver && ride.passengers && ride.passengers.length > 0 && (
+                {isAuthenticatedDriver && ride.passengers && ride.passengers.length > 0 && (
                     <PassengerList
                         passengers={ride.passengers}
                         rideInfo={{ origin_city: ride.origin_city, destination_city: ride.destination_city }}
@@ -483,7 +513,7 @@ export default function RideDetailsScreen() {
             </ScrollView>
 
             {/* Bottom Control Bar */}
-            {isDriver ? (
+            {isAuthenticatedDriver ? (
                 <View style={ds.bottomBar}>
                     {ride.status === 'active' ? (
                         <View style={ds.editBtnGroup}>
@@ -608,7 +638,7 @@ export default function RideDetailsScreen() {
             )}
 
             {/* Edit Modal for Drivers */}
-            {isDriver && (
+            {isAuthenticatedDriver && (
                 <EditRideModal
                     visible={isEditModalVisible}
                     ride={ride}
@@ -629,7 +659,7 @@ export default function RideDetailsScreen() {
                 rideDetails={{
                     origin: ride.origin_city,
                     destination: ride.destination_city,
-                    timeString: new Date(ride.departure_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }).toUpperCase(),
+                    timeString: formatDepartureClock(ride.departure_time),
                     vehicleTypes: `${ride.vehicle_type.charAt(0).toUpperCase() + ride.vehicle_type.slice(1)} • ${seatsSelected} Seats`,
                 }}
                 primaryAction={{

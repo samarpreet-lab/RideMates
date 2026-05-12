@@ -78,7 +78,7 @@ export default function OtpStep({
       </View>
 
       <View style={s.resendContainer}>
-        <Text style={s.resendText}>Didn't receive OTP? </Text>
+        <Text style={s.resendText}>Didn&#39;t receive OTP? </Text>
         <TouchableOpacity onPress={onResend} disabled={timer > 0 || loading}>
           <Text style={[s.resendLink, timer > 0 && s.resendLinkDisabled]}>
             {timer > 0 ? `Resend in ${timer}s` : 'Resend'}

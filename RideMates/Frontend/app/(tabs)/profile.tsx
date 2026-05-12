@@ -130,7 +130,7 @@ export default function ProfileScreen() {
                     setEditName('');
                     setEditPhone('');
                     
-                    router.replace('/(tabs)/index' as any);
+                    router.replace('/(tabs)/login');
                 },
             },
         ]);

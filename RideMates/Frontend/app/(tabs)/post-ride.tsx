@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Local dependencies
 import api, { deleteToken } from '../../services/api';
-import { VEHICLE_TYPES, FUEL_RATES, VEHICLE_MULTIPLIERS, HUB_COORDS } from '../../components/PostRide/constants';
+import { VEHICLE_TYPES, FUEL_RATES, VEHICLE_MULTIPLIERS, VEHICLE_CAPACITIES, BASE_FARE, HUB_COORDS } from '../../components/PostRide/constants';
 import { s } from '../../components/PostRide/styles';
 import { sp } from '../../constants/responsive';
 
@@ -26,6 +26,7 @@ import VehicleSection from '../../components/PostRide/VehicleSection';
 import PricingSection from '../../components/PostRide/PricingSection';
 import LocationPickerModal from '../../components/PostRide/LocationPickerModal';
 import RideStatusModal from '../../components/ui/RideStatusModal';
+import { formatDistanceKm } from '../../components/Explore/constants';
 import { useAlert } from '../../components/ui/AlertContext';
 import { PostRideSkeleton } from '../../components/ui/SkeletonLoader';
 
@@ -76,6 +77,7 @@ export default function PostRideScreen() {
 
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [createdRideId, setCreatedRideId] = useState<string | null>(null);
+  const [actualDistance, setActualDistance] = useState<number | null>(null);
 
   // --- Section A: Route ---
   const [origin, setOrigin] = useState('LPU Main Gate');
@@ -117,7 +119,7 @@ export default function PostRideScreen() {
     } catch (error: any) {
       if (error.response?.status === 401) {
         await deleteToken();
-        router.replace('/(tabs)' as any);
+        router.replace('/(tabs)/login');
       } else {
         // FIX: Set error state for retry UI
         setLoadError(error.response?.data?.message || 'Could not load profile. Please check your connection.');
@@ -136,15 +138,54 @@ export default function PostRideScreen() {
 
   // --- Compute distance when both cities set ---
   useEffect(() => {
-    if (!origin || !destination) { setDistanceKm(0); return; }
+    if (!origin || !destination) {
+      setDistanceKm(0);
+      return;
+    }
+
     const o = getCoords(origin) || originCoords;
     const d = getCoords(destination) || destCoords;
-    if (o && d) {
-      const km = haversineKm(o.lat, o.lng, d.lat, d.lng);
-      setDistanceKm(km);
-    } else {
+
+    if (!o || !d) {
       setDistanceKm(0);
+      return;
     }
+
+    const controller = new AbortController();
+    let didCancel = false;
+
+    const fetchRouteDistance = async () => {
+      try {
+        const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${o.lng},${o.lat};${d.lng},${d.lat}?overview=false`;
+        const response = await fetch(osrmUrl, { signal: controller.signal });
+
+        if (!response.ok) {
+          throw new Error(`OSRM responded with ${response.status}`);
+        }
+
+        const data = await response.json();
+        const routeMeters = data?.routes?.[0]?.distance;
+        if (typeof routeMeters !== 'number' || routeMeters <= 0) {
+          throw new Error('No valid route distance received');
+        }
+
+        if (!didCancel) {
+          setDistanceKm(Math.round((routeMeters / 1000) * 100) / 100);
+        }
+      } catch {
+        if (didCancel || controller.signal.aborted) return;
+        // Safe fallback when route API is temporarily unavailable.
+        const fallbackKm = haversineKm(o.lat, o.lng, d.lat, d.lng);
+        setDistanceKm(fallbackKm);
+      }
+    };
+
+    fetchRouteDistance();
+
+    return () => {
+      didCancel = true;
+      controller.abort();
+    };
   }, [origin, destination, originCoords, destCoords]);
 
   // --- Update mileage default on vehicle type change ---
@@ -153,18 +194,24 @@ export default function PostRideScreen() {
     if (vt) setMileage(String(vt.defaultMileage));
     // Reset seats for bike
     if (vehicleType === 'bike' && seats > 1) setSeats(1);
-  }, [vehicleType]);
+  }, [vehicleType, seats]);
 
-  // --- Price calculations (per-seat model — SRS v1.5) ---
+  // --- Price calculations (per-seat model — SRS v2.0 with capacity divisor) ---
   const fuelRate = FUEL_RATES[fuelType] || 105;
   const mileageNum = parseFloat(mileage) || 15;
   const basePrice = distanceKm > 0 ? round2((distanceKm * fuelRate) / mileageNum) : 0; // total fuel cost
-  const multiplier = VEHICLE_MULTIPLIERS[vehicleType] || 1.5;
+  const multiplier = VEHICLE_MULTIPLIERS[vehicleType] || 1.25;
+  const baseFare = BASE_FARE[vehicleType] || 40;
+  const standardCapacity = VEHICLE_CAPACITIES[vehicleType] || 5;
+
+  // Capacity divisor: divide by vehicle's FULL capacity, not just offered seats
+  // This ensures true cost-sharing: a driver offering 1 seat doesn't pay 100% of fuel
+  const capacityDivisor = Math.max(seats + 1, standardCapacity);
 
   // Per-seat zone boundaries
-  const basePerSeat = (basePrice > 0 && seats > 0) ? round2(basePrice / seats) : 0; // green zone start
-  const recommendedPerSeat = round2(basePerSeat * 1.2);                                                   // green zone ceiling
-  const maxPerSeat = (basePrice > 0 && seats > 0) ? round2((basePrice * multiplier) / seats) : 0; // hard cap
+  const basePerSeat = (basePrice > 0) ? round2(basePrice / capacityDivisor) : 0; // fuel cost per seat
+  const recommendedPerSeat = round2(basePerSeat * 1.2);                          // green zone ceiling
+  const maxPerSeat = basePerSeat > 0 ? baseFare + round2(basePerSeat * multiplier) : 0; // hard cap: base_fare + (per_seat * multiplier)
 
   // driverPrice is per-seat; cappedPrice is what gets stored in DB
   const cappedPrice = Math.min(driverPrice, maxPerSeat || driverPrice);
@@ -187,11 +234,18 @@ export default function PostRideScreen() {
     return true;
   };
 
-  // --- Combine date + time and convert to UTC for MySQL DATETIME format ---
+  // --- Combine date + time in LOCAL timezone (not UTC) for MySQL DATETIME format ---
   const getDepartureUTC = (): string => {
     const d = new Date(departureDate);
     d.setHours(departureTime.getHours(), departureTime.getMinutes(), 0, 0);
-    return d.toISOString().slice(0, 19).replace('T', ' ');
+    // Keep local time instead of converting to UTC
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const mins = String(d.getMinutes()).padStart(2, '0');
+    const secs = String(d.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${mins}:${secs}`;
   };
 
   // --- Publish ---
@@ -224,7 +278,13 @@ export default function PostRideScreen() {
 
       const res = await api.post('/rides/create', body);
       if (res.data.success) {
-        setCreatedRideId(res.data.data.id || null);
+        // Backend returns ride_id and the calculated distance_km (from OSRM)
+        const postedDistance = Number(res.data.data.distance_km);
+        setCreatedRideId(String(res.data.data.ride_id || null));
+        setActualDistance(Number.isFinite(postedDistance) ? postedDistance : null);
+        if (Number.isFinite(postedDistance)) {
+          setDistanceKm(postedDistance);
+        }
         setSuccessModalVisible(true);
       }
     } catch (error: any) {
@@ -305,7 +365,7 @@ export default function PostRideScreen() {
           origin,
           destination,
           timeString: departureTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }).toUpperCase(),
-          vehicleTypes: `${vehicleType.charAt(0).toUpperCase() + vehicleType.slice(1)} • ${seats} Seats`,
+          vehicleTypes: `${vehicleType.charAt(0).toUpperCase() + vehicleType.slice(1)} • ${seats} Seats • ${formatDistanceKm(actualDistance ?? distanceKm)}`,
         }}
         primaryAction={{
           label: 'Got it',

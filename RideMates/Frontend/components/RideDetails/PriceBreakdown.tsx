@@ -19,12 +19,6 @@ export default function PriceBreakdown({ ride, seatsSelected }: Props) {
 
     return (
         <View style={ds.card}>
-            {/* Base fuel cost (total for trip) */}
-            <View style={ds.priceRow}>
-                <Text style={ds.priceLabel}>Base fuel cost (total)</Text>
-                <Text style={ds.priceValue}>₹{Number(ride.base_price).toFixed(0)}</Text>
-            </View>
-
             {/* Per seat price */}
             <View style={ds.priceRow}>
                 <Text style={ds.priceLabel}>Price per seat</Text>

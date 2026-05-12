@@ -9,6 +9,7 @@ import {
   getTrustColor,
   getVehicleIcon,
   formatDepartureTime,
+  formatDistanceKm,
 } from './constants';
 
 interface RideCardProps {
@@ -62,7 +63,7 @@ export default function RideCard({ ride, onDismissModal }: RideCardProps) {
         <View style={s.rideRouteTimeline}><View style={s.rideOriginDot} /><View style={s.rideRouteLine} /><View style={s.rideDestDot} /></View>
         <View style={s.rideRouteDetails}>
           <Text style={s.rideRouteCity} numberOfLines={1}>{ride.origin_city}</Text>
-          <Text style={s.rideRouteDist}>{ride.distance_km} km</Text>
+          <Text style={s.rideRouteDist}>{formatDistanceKm(ride.distance_km)}</Text>
           <Text style={s.rideRouteCity} numberOfLines={1}>{ride.destination_city}</Text>
         </View>
         <View style={s.rideTimeBox}>

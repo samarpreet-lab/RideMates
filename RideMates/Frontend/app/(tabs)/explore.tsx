@@ -86,7 +86,7 @@ export default function HomeScreen() {
       console.error('❌ Profile load error:', error?.response?.status, error?.message);
       if (error.response?.status === 401) {
         await deleteToken();
-        router.replace('/(tabs)' as any);
+        router.replace('/(tabs)/login');
       } else {
         // FIX: Set error state for retry UI with better error message
         setProfile(null);
@@ -209,7 +209,7 @@ export default function HomeScreen() {
       cancelText: 'Cancel',
       onConfirm: async () => {
         await deleteToken();
-        router.replace('/(tabs)' as any);
+        router.replace('/(tabs)/login');
       },
     });
   };

@@ -109,7 +109,7 @@ export default function LocationPickerModal({
           renderItem={({ item }) => {
             const isLocal = item.source === 'local';
             const iconColor = isLocal ? '#C24E00' : '#6B5344';
-            const iconName = isLocal ? (item as any).icon : 'location-on';
+            const iconName = (item.icon as any) || 'location-on';
 
             return (
               <TouchableOpacity

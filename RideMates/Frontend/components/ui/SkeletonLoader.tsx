@@ -49,7 +49,7 @@ export function SkeletonBox({ width, height, borderRadius = 8, style }: Skeleton
     );
     animation.start();
     return () => animation.stop();
-  }, []);
+  }, [pulseAnim]);
 
   return (
     <Animated.View

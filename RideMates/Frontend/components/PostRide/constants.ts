@@ -18,9 +18,22 @@ export const FUEL_RATES: Record<string, number> = {
     electric: 5,
 };
 
+/** Vehicle capacities (driver + passengers) */
+export const VEHICLE_CAPACITIES: Record<string, number> = {
+    bike: 2,      // 1 driver + 1 passenger
+    car: 5,       // 1 driver + 4 passengers (standard 5-seater)
+};
+
+/** Base boarding fares (₹) */
+export const BASE_FARE: Record<string, number> = {
+    bike: 20,     // ₹20 boarding fee
+    car: 40,      // ₹40 boarding fee
+};
+
+/** Vehicle multipliers for fuel cost (updated to match backend) */
 export const VEHICLE_MULTIPLIERS: Record<string, number> = {
-    bike: 1.2,
-    car: 1.5,
+    bike: 1.5,    // 1.5x multiplier for fuel cost
+    car: 1.25,    // 1.25x multiplier for fuel cost
 };
 
 /** Local hub coordinates for hybrid geocoding */

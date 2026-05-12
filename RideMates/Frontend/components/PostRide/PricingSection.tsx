@@ -49,7 +49,7 @@ export default function PricingSection({
 
     const zone = getZone(driverPrice, recommendedPerSeat);
     const badge = ZONE_CONFIG[zone];
-    const multiplierLabel = vehicleType === 'bike' ? '1.2×' : vehicleType === 'auto' ? '1.35×' : '1.5×';
+    const multiplierLabel = vehicleType === 'bike' ? '1.5×' : vehicleType === 'car' ? '1.25×' : '1.35×';
 
     return (
         <View style={s.sectionCard}>
@@ -64,15 +64,7 @@ export default function PricingSection({
                 <>
                     {/* Zone breakdown */}
                     <View style={s.priceBreakdown}>
-                        {/* Row 1: Total fuel cost — reference only */}
-                        <View style={s.priceRow}>
-                            <Text style={s.priceLabel}>Fuel cost (total trip)</Text>
-                            <Text style={s.priceValue}>₹{basePrice}</Text>
-                        </View>
-
-                        <View style={s.priceDivider} />
-
-                        {/* Row 2: Green zone start */}
+                        {/* Green zone start */}
                         <View style={s.priceRow}>
                             <View style={s.priceZoneDot}>
                                 <View style={[s.zoneDot, { backgroundColor: '#4CAF50' }]} />

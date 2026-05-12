@@ -44,7 +44,7 @@ function isInPunjabRegion(lat: number, lng: number): boolean {
 
 export default function usePhotonSearch(
   query: string,
-  localHubs: Array<{ id: string; label: string; subtitle: string; icon: string }>,
+  localHubs: { id: string; label: string; subtitle: string; icon: string }[],
   hubCoords: Record<string, { lat: number; lng: number }>,
 ) {
   const [photonResults, setPhotonResults] = useState<LocationResult[]>([]);
@@ -148,7 +148,7 @@ export default function usePhotonSearch(
       if (timerRef.current) clearTimeout(timerRef.current);
       if (abortRef.current) abortRef.current.abort();
     };
-  }, [query]);
+  }, [query, localHubs]);
 
   return { photonResults, loading };
 }

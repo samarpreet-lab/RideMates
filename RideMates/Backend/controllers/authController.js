@@ -409,7 +409,8 @@ async function verifyOtp(req, res) {
     const otpRecord = otpRecords[0];
 
     // --- Check brute force protection (SRS FR-AUTH-10) ---
-    if (otpRecord.attempts >= MAX_OTP_ATTEMPTS) {
+    // FIX: Check should be > instead of >= to allow exactly 3 attempts (0, 1, 2 failures before lock)
+    if (otpRecord.attempts > MAX_OTP_ATTEMPTS) {
       return res.status(403).json({
         success: false,
         message: 'Too many failed attempts. Please request a new OTP.',
@@ -622,8 +623,9 @@ async function updateProfile(req, res) {
       values.push(full_name);
     }
     if (phone !== undefined) {
-      // --- Check for duplicate phone number (exclude current user) ---
-      if (phone) {
+      // --- FIX: Properly validate non-empty phone strings (prevent empty string bypass) ---
+      // Check if phone was provided AND is not an empty string
+      if (phone && phone.trim()) {
         // FIX: Validate phone format (Indian mobile number)
         const phoneClean = phone.replace(/[\s-]/g, '');
         if (!/^(\+91)?[6-9]\d{9}$/.test(phoneClean)) {
@@ -647,7 +649,7 @@ async function updateProfile(req, res) {
         }
       }
       updates.push('phone = ?');
-      values.push(phone);
+      values.push(phone && phone.trim() ? phone.trim() : null);
     }
     if (gender !== undefined) {
       // FIX: Validate gender value

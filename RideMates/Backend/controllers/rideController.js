@@ -186,14 +186,15 @@ async function createRide(req, res) {
 
     // --- Run the tiered pricing algorithm (SRS Section 8.1) ---
     // driver_set_price is the per-seat price the driver wants to charge.
-    // calculatePrice returns capped_price as per-seat (v1.5 model).
+    // calculatePrice returns capped_price as per-seat (v2.0 model with capacity divisor).
+    // FIX: Use parsed priceNum instead of raw driver_set_price string
     const pricing = calculatePrice({
       distance_km,
       fuel_rate,
       vehicle_mileage: parseFloat(vehicle_mileage) || 15,
       vehicle_type: vehicle_type || 'car',
-      driver_set_price: parseFloat(driver_set_price),
-      available_seats: parseInt(available_seats),
+      driver_set_price: priceNum,
+      available_seats: seatsNum,
     });
 
     // pricing.capped_price IS already per-seat — no further division needed
@@ -218,7 +219,7 @@ async function createRide(req, res) {
         vehicle_type || 'car',
         vehicle_mileage || 15.00,
         fuel_type || 'petrol',
-        pricing.base_price,
+        pricing.total_fuel_cost,
         driver_set_price,
         pricing.capped_price,
         is_emergency_route || false,
@@ -234,11 +235,11 @@ async function createRide(req, res) {
       message: 'Ride posted successfully!',
       data: {
         ride_id: result.insertId,
-        base_price: pricing.base_price,
-        max_allowed: pricing.max_allowed,
+        distance_km: distance_km,  // Return the OSRM-calculated distance
+        base_price: pricing.total_fuel_cost,
+        max_per_seat: pricing.max_per_seat,
         capped_price: pricing.capped_price,
         was_clamped: pricing.was_clamped,
-        multiplier: pricing.multiplier,
         per_seat_price,
       },
     });
@@ -489,13 +490,16 @@ async function updateRide(req, res) {
       );
       const fuelRate = fuelRows.length > 0 ? parseFloat(fuelRows[0].rate_per_litre) : 105;
 
+      // FIX: Use new available_seats from request if provided, otherwise use database value
+      const seatCount = available_seats !== undefined ? parseInt(available_seats) : parseInt(rd.available_seats) || 1;
+
       const repricing = calculatePrice({
         distance_km: parseFloat(rd.distance_km),
         fuel_rate: fuelRate,
         vehicle_mileage: parseFloat(rd.vehicle_mileage),
         vehicle_type: rd.vehicle_type,
         driver_set_price: parseFloat(driver_set_price),
-        available_seats: parseInt(rd.available_seats) || 1,
+        available_seats: seatCount,
       });
 
       updates.push('driver_set_price = ?');
@@ -503,7 +507,7 @@ async function updateRide(req, res) {
       updates.push('capped_price = ?');
       values.push(repricing.capped_price);
       updates.push('base_price = ?');
-      values.push(repricing.base_price);
+      values.push(repricing.total_fuel_cost);
     }
     if (is_emergency_route !== undefined) {
       updates.push('is_emergency_route = ?');

@@ -6,7 +6,7 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { ds } from './styles';
-import { Ride, formatDepartureTime } from '../Explore/constants';
+import { Ride, formatDepartureTime, formatDistanceKm } from '../Explore/constants';
 
 interface Props {
     ride: Ride;
@@ -30,7 +30,7 @@ export default function RouteTimeline({ ride }: Props) {
 
                     <View style={ds.routeDivider}>
                         <MaterialIcons name="straighten" size={14} color="#bbb" />
-                        <Text style={ds.routeDistText}>{ride.distance_km} km</Text>
+                        <Text style={ds.routeDistText}>{formatDistanceKm(ride.distance_km)}</Text>
                         <View style={ds.driverMetaDot} />
                         <MaterialIcons name="local-gas-station" size={14} color="#bbb" />
                         <Text style={ds.routeDistText}>{ride.fuel_type}</Text>

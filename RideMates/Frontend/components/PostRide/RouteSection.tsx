@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, Switch } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { s } from './styles';
+import { formatDistanceKm } from '../Explore/constants';
 
 interface RouteSectionProps {
     origin: string;
@@ -63,7 +64,7 @@ export default function RouteSection({
             {distanceKm > 0 && (
                 <View style={s.distanceBadge}>
                     <MaterialIcons name="straighten" size={14} color="#C24E00" />
-                    <Text style={s.distanceText}>{distanceKm} km (approx)</Text>
+                    <Text style={s.distanceText}>{formatDistanceKm(distanceKm)}</Text>
                 </View>
             )}
 

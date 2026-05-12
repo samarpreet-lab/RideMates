@@ -37,9 +37,9 @@ function AuthGatekeeper({ children }: { children: React.ReactNode }) {
       const inAuthGroup = currentSegments[0] === '(tabs)' && (seg1 === 'index' || seg1 === 'login');
 
       if (!token) {
-        // Not logged in — lock to signup screen
+        // Not logged in — lock to login screen
         if (!inAuthGroup) {
-          router.replace('/(tabs)' as any);
+          router.replace('/(tabs)/login');
         }
       } else {
         // Logged in — kick out of login screen

@@ -11,7 +11,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { ds } from './styles';
-import { Ride } from '../Explore/constants';
+import { Ride, parseRideDateTime } from '../Explore/constants';
 
 interface EditRideModalProps {
     visible: boolean;
@@ -26,14 +26,8 @@ export default function EditRideModal({ visible, ride, onClose, onSave, onSaveSu
 
     // Parse departure time safely
     const parseDate = (dateStr: string | Date | undefined): Date => {
-        if (!dateStr) return new Date();
-        try {
-            const parsed = new Date(dateStr);
-            // Check if date is valid
-            return isNaN(parsed.getTime()) ? new Date() : parsed;
-        } catch {
-            return new Date();
-        }
+        const parsed = parseRideDateTime(dateStr);
+        return parsed ?? new Date();
     };
 
     const [departureDate, setDepartureDate] = useState<Date>(() => parseDate(ride.departure_time));
@@ -61,7 +55,14 @@ export default function EditRideModal({ visible, ride, onClose, onSave, onSaveSu
     const getCombinedDateTime = () => {
         const d = new Date(departureDate);
         d.setHours(departureTime.getHours(), departureTime.getMinutes(), 0, 0);
-        return d.toISOString().slice(0, 19).replace('T', ' '); // MySQL format
+        // Keep local time instead of converting to UTC
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const hours = String(d.getHours()).padStart(2, '0');
+        const mins = String(d.getMinutes()).padStart(2, '0');
+        const secs = String(d.getSeconds()).padStart(2, '0');
+        return `${year}-${month}-${day} ${hours}:${mins}:${secs}`; // MySQL format
     };
 
     const handleSave = async () => {

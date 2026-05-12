@@ -9,7 +9,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { s } from './styles';
 import { s as eStyles } from '../Explore/styles'; // Borrow internal route styles
-import { formatDepartureTime } from '../Explore/constants';
+import { formatDepartureTime, formatDistanceKm, parseRideDateTime } from '../Explore/constants';
 
 interface MyRideCardProps {
     ride: any;
@@ -85,7 +85,15 @@ export default function MyRideCard({ ride, viewMode, onCancelBooking, onPromptCa
     const handleCancelBooking = () => {
         // Calculate time until departure for the penalty warning
         const now = new Date();
-        const departure = new Date(ride.departure_time);
+        const departure = parseRideDateTime(ride.departure_time);
+        if (!departure) {
+            showAlert({
+                type: 'error',
+                title: 'Cannot Cancel Right Now',
+                message: 'Departure time is unavailable for this ride. Please try again in a moment.',
+            });
+            return;
+        }
         const hoursLeft = (departure.getTime() - now.getTime()) / (1000 * 60 * 60);
 
         let penaltyWarning: string;
@@ -159,7 +167,7 @@ export default function MyRideCard({ ride, viewMode, onCancelBooking, onPromptCa
                 </View>
                 <View style={eStyles.rideRouteDetails}>
                     <Text style={eStyles.rideRouteCity} numberOfLines={1}>{ride.origin_city}</Text>
-                    <Text style={eStyles.rideRouteDist}>{ride.distance_km} km</Text>
+                    <Text style={eStyles.rideRouteDist}>{formatDistanceKm(ride.distance_km)}</Text>
                     <Text style={eStyles.rideRouteCity} numberOfLines={1}>{ride.destination_city}</Text>
                 </View>
                 <MaterialIcons name="chevron-right" size={24} color="#ccc" />
@@ -219,4 +227,3 @@ export default function MyRideCard({ ride, viewMode, onCancelBooking, onPromptCa
         </TouchableOpacity>
     );
 }
-
