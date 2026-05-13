@@ -160,11 +160,11 @@ export default function LoginScreen() {
               />
             )}
 
-            {/* FIX: Navigate to index (signup screen), not tabs root */}
+            {/* Navigate to tabs index (signup screen). */}
             <AuthFooterLink
               text="Don't have an account? "
               linkText="Sign up here"
-              onPress={() => router.push('/(tabs)/index' as any)}
+              onPress={() => router.push('/(tabs)')}
               loading={loading}
             />
           </View>

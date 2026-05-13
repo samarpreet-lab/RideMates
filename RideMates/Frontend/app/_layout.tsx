@@ -34,7 +34,7 @@ function AuthGatekeeper({ children }: { children: React.ReactNode }) {
       const token = await getToken();
       const currentSegments = segmentsRef.current;
       const seg1 = currentSegments[1] as string | undefined;
-      const inAuthGroup = currentSegments[0] === '(tabs)' && (seg1 === 'index' || seg1 === 'login');
+      const inAuthGroup = currentSegments[0] === '(tabs)' && (!seg1 || seg1 === 'index' || seg1 === 'login');
 
       if (!token) {
         // Not logged in — lock to login screen

@@ -15,6 +15,7 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        tabBarLabelPosition: 'below-icon',
         tabBarActiveTintColor: '#C24E00',
         tabBarInactiveTintColor: '#A8937F',
         tabBarStyle: {
@@ -29,6 +30,15 @@ export default function TabLayout() {
           height: tabBarHeight,
           paddingBottom: bottomPadding,
           paddingTop: sp(4),
+          width: '100%',
+          flexDirection: 'row',
+          justifyContent: 'space-around',
+        },
+        tabBarItemStyle: {
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          paddingHorizontal: sp(8),
         },
         tabBarLabelStyle: {
           fontSize: fs(11),

@@ -19,7 +19,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { s } from './styles';
-import { ALL_HUBS, QUICK_ORIGINS, QUICK_DESTINATIONS } from './constants';
+import { ORIGIN_HUBS, DESTINATION_HUBS, QUICK_ORIGINS, QUICK_DESTINATIONS } from './constants';
 import useLocationIQSearch from '../../hooks/useLocationIQSearch';
 
 interface LocationPickerModalProps {
@@ -41,8 +41,11 @@ export default function LocationPickerModal({
 }: LocationPickerModalProps) {
   const inputRef = useRef<TextInput>(null);
 
+  // Select appropriate hubs based on target (origin shows all campus hubs, destination only shows main gate)
+  const hubs = target === 'destination' ? DESTINATION_HUBS : ORIGIN_HUBS;
+
   // LocationIQ search (combines local hubs + API results)
-  const { results: locationResults, loading: locationLoading } = useLocationIQSearch(query, ALL_HUBS);
+  const { results: locationResults, loading: locationLoading } = useLocationIQSearch(query, hubs);
 
   // Separate local from API results
   const localHubResults = locationResults.filter((r) => r.source === 'local');

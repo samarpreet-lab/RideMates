@@ -6,8 +6,6 @@
 
 export const QUICK_ORIGINS = [
   { id: 'lpugate', label: 'LPU Main Gate', icon: 'home' as const },
-  { id: 'admin', label: 'Admin Block', icon: 'business' as const },
-  { id: 'hostel', label: 'Hostel Blocks', icon: 'hotel' as const },
   { id: 'phagwara', label: 'Phagwara', icon: 'location-city' as const },
   { id: 'jalandhar', label: 'Jalandhar Station', icon: 'train' as const },
 ];
@@ -38,13 +36,30 @@ export const CAMPUS_HUBS = [
 
 export const OUTSIDE_HUBS = [
   { id: 'phagwara', label: 'Phagwara', subtitle: 'Phagwara Bus Stand', icon: 'directions-bus' as const },
-  { id: 'jalandhar', label: 'Jalandhar Station', subtitle: 'Railway Station', icon: 'train' as const },
+  { id: 'jalandhar-bus', label: 'Jalandhar Bus Stand', subtitle: 'Main Bus Terminal', icon: 'directions-bus' as const },
+  { id: 'jalandhar-station', label: 'Jalandhar Railway Station', subtitle: 'Railway Station', icon: 'train' as const },
+  { id: 'modal-town', label: 'Modal Town Jalandhar', subtitle: 'Shopping & Business Area', icon: 'location-city' as const },
   { id: 'ludhiana', label: 'Ludhiana', subtitle: 'Ludhiana City', icon: 'location-city' as const },
   { id: 'amritsar', label: 'Amritsar', subtitle: 'Amritsar City', icon: 'location-city' as const },
   { id: 'nakodar', label: 'Nakodar', subtitle: 'Nakodar Town', icon: 'directions' as const },
   { id: 'kapurthala', label: 'Kapurthala', subtitle: 'Kapurthala City', icon: 'directions' as const },
 ];
 
+// ─── Filtered Hubs for Picker ─────────────────────────────────────────────
+
+// For origin picker: Only Main Gate from campus + outside hubs (no hostels or other campus locations)
+export const ORIGIN_HUBS = [
+  { id: 'maingate', label: 'LPU Main Gate', subtitle: 'Main Entrance & Security', icon: 'home' as const },
+  ...OUTSIDE_HUBS,
+];
+
+// For destination picker: Only Main Gate from campus + outside hubs (no hostels)
+export const DESTINATION_HUBS = [
+  { id: 'maingate', label: 'LPU Main Gate', subtitle: 'Main Entrance & Security', icon: 'home' as const },
+  ...OUTSIDE_HUBS,
+];
+
+// All hubs (kept for backward compatibility if needed elsewhere)
 export const ALL_HUBS = [...CAMPUS_HUBS, ...OUTSIDE_HUBS];
 
 // ─── Date Options ──────────────────────────────────────────────────────────
@@ -67,9 +82,7 @@ export const LPU_REGION = {
 
 export const LPU_LANDMARKS = [
   { id: 'gate', title: 'LPU Main Gate', lat: 31.2538, lon: 75.7027, icon: 'home' as const, color: '#C24E00' },
-  { id: 'admin', title: 'Admin Block', lat: 31.2522, lon: 75.7015, icon: 'business' as const, color: '#1976d2' },
   { id: 'lib', title: 'Central Library', lat: 31.2510, lon: 75.7035, icon: 'local-library' as const, color: '#388e3c' },
-  { id: 'hostel', title: 'Hostel Blocks', lat: 31.2545, lon: 75.7012, icon: 'hotel' as const, color: '#7b1fa2' },
   { id: 'cafeteria', title: 'Food Court', lat: 31.2530, lon: 75.7042, icon: 'restaurant' as const, color: '#f44336' },
 ];
 
